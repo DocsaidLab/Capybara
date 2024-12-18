@@ -130,11 +130,12 @@ def jaccard_index(
 
     M = cv2.getPerspectiveTransform(
         gt_poly.reshape(-1, 1, 2),
-        object_coord_target.reshape(-1, 1, 2)
+        object_coord_target[None, ...],
     )
 
     transformed_pred_coords = cv2.perspectiveTransform(
-        pred_poly.reshape(-1, 1, 2), M)
+        pred_poly.reshape(-1, 1, 2), M
+    )
 
     try:
         poly_target = ShapelyPolygon(object_coord_target)
