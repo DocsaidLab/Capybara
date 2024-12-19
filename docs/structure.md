@@ -1,6 +1,6 @@
 # Structure
 
-`structures` 模塊是 DocsaidKit 中的一個重要模塊，用於表示和處理一般化的框架（如邊界框）的格式和操作。
+`structures` 模塊是 capybara 中的一個重要模塊，用於表示和處理一般化的框架（如邊界框）的格式和操作。
 
 ## 目錄
 
@@ -9,17 +9,17 @@
   - [Box](#box)
   - [Boxes](#boxes)
 - [Polygon, Polygons](#polygon-polygons)
-    - [Polygon](#polygon)
-    - [Polygons](#polygons)
+  - [Polygon](#polygon)
+  - [Polygons](#polygons)
 - [其他](#其他)
-    - [pairwise_intersection](#pairwise_intersection)
-    - [pairwise_iou](#pairwise_iou)
-    - [pairwise_ioa](#pairwise_ioa)
-    - [merge_boxes](#merge_boxes)
+  - [pairwise_intersection](#pairwise_intersection)
+  - [pairwise_iou](#pairwise_iou)
+  - [pairwise_ioa](#pairwise_ioa)
+  - [merge_boxes](#merge_boxes)
 
 ---
 
-## [**Box, Boxes and BoxMode**](../docsaidkit/structures/boxes.py)
+## [**Box, Boxes and BoxMode**](../capybara/structures/boxes.py)
 
 ### **BoxMode**：
 
@@ -35,48 +35,48 @@
 
 ### **Box**：
 
-這是一個類，用於表示一個邊界框。要使用 `Box` 類來表示和操作邊界框，首先需要從 `docsaidkit` 匯入相應的類型和方法。以下是如何創建、表示和操作 `Box` 的基本步驟：
+這是一個類，用於表示一個邊界框。要使用 `Box` 類來表示和操作邊界框，首先需要從 `capybara` 匯入相應的類型和方法。以下是如何創建、表示和操作 `Box` 的基本步驟：
 
 1. **匯入必要的類型和方法**：
 
-    在你的 Python 程式中，首先導入 `Box` 和 `BoxMode`：
+   在你的 Python 程式中，首先導入 `Box` 和 `BoxMode`：
 
-    ```python
-    from docsaidkit import Box, BoxMode
-    ```
+   ```python
+   from capybara import Box, BoxMode
+   ```
 
 2. **創建 Box 對象**：
 
-    使用 `Box` 類的構造函數，你可以創建一個新的邊界框。在這裡，你需要提供一個數組來表示框的坐標以及一個表示框坐標格式的 `BoxMode`：
+   使用 `Box` 類的構造函數，你可以創建一個新的邊界框。在這裡，你需要提供一個數組來表示框的坐標以及一個表示框坐標格式的 `BoxMode`：
 
-    ```python
-    box = Box([50, 50, 150, 150], box_mode=BoxMode.XYXY)
-    ```
+   ```python
+   box = Box([50, 50, 150, 150], box_mode=BoxMode.XYXY)
+   ```
 
-    這裡，我們創建了一個左上角坐標為 (50, 50) 且右下角坐標為 (150, 150) 的邊界框，並指定其格式為 `XYXY`。
+   這裡，我們創建了一個左上角坐標為 (50, 50) 且右下角坐標為 (150, 150) 的邊界框，並指定其格式為 `XYXY`。
 
 3. **使用 Box 方法**：
 
    - `copy()`: 創建 `Box` 物件的拷貝。
    - `numpy()`: 將 `Box` 物件轉換為 numpy 數組。
-   - `normalize(w, h)`: 正規化Box的坐標。
-   - `denormalize(w, h)`: 反正規化Box的坐標。
-   - `clip(xmin, ymin, xmax, ymax)`: 將Box裁剪到給定的坐標範圍。
-   - `shift(shift_x, shift_y)`: 平移Box。
-   - `scale(factor_x, factor_y)`: 縮放Box。
-   - `area()`: 獲得Box的面積。
-   - `aspect_ratio()`: 獲得Box的寬高比。
-   - `center()`: 計算Box的中心點。
-   - `left_top()`: 獲得Box的左上角坐標。
-   - `right_bottom()`: 獲得Box的右下角坐標。
-   - `left_bottom()`: 獲得Box的左下角坐標。
-   - `height()`: 獲得Box的高度。
-   - `width()`: 獲得Box的寬度。
-   - `convert(mode)`: 將Box從一種形式轉換為另一種形式。
-   - `square()`: 轉換Box為正方形，保持中心不變。
-   - `to_list(flatten)`: 將Box轉換為列表。
-   - `to_polygon()`: 將Box轉換為 `docsaidkit.Polygon` 物件。
-   - `tolist()`: 將Box轉換為列表。
+   - `normalize(w, h)`: 正規化 Box 的坐標。
+   - `denormalize(w, h)`: 反正規化 Box 的坐標。
+   - `clip(xmin, ymin, xmax, ymax)`: 將 Box 裁剪到給定的坐標範圍。
+   - `shift(shift_x, shift_y)`: 平移 Box。
+   - `scale(factor_x, factor_y)`: 縮放 Box。
+   - `area()`: 獲得 Box 的面積。
+   - `aspect_ratio()`: 獲得 Box 的寬高比。
+   - `center()`: 計算 Box 的中心點。
+   - `left_top()`: 獲得 Box 的左上角坐標。
+   - `right_bottom()`: 獲得 Box 的右下角坐標。
+   - `left_bottom()`: 獲得 Box 的左下角坐標。
+   - `height()`: 獲得 Box 的高度。
+   - `width()`: 獲得 Box 的寬度。
+   - `convert(mode)`: 將 Box 從一種形式轉換為另一種形式。
+   - `square()`: 轉換 Box 為正方形，保持中心不變。
+   - `to_list(flatten)`: 將 Box 轉換為列表。
+   - `to_polygon()`: 將 Box 轉換為 `capybara.Polygon` 物件。
+   - `tolist()`: 將 Box 轉換為列表。
 
 ---
 
@@ -89,7 +89,7 @@
    要開始使用 `Boxes` 類，首先需要匯入它以及 `BoxMode`：
 
    ```python
-   from docsaidkit import Boxes, BoxMode
+   from capybara import Boxes, BoxMode
    ```
 
 2. **創建 Boxes 物件**：
@@ -106,29 +106,29 @@
 
    - `copy()`: 創建 `Boxes` 物件的拷貝。
    - `numpy()`: 將 `Boxes` 物件轉換為 numpy 數組。
-   - `normalize(w, h)`: 正規化Box的坐標。
-   - `denormalize(w, h)`: 反正規化Box的坐標。
-   - `clip(xmin, ymin, xmax, ymax)`: 將Box裁剪到給定的坐標範圍。
-   - `shift(shift_x, shift_y)`: 平移Box。
-   - `scale(factor_x, factor_y)`: 縮放Box。
-   - `area()`: 獲得每個Box的面積。
-   - `aspect_ratio()`: 獲得Box的寬高比。
-   - `center()`: 計算Box的中心點。
-   - `left_top()`: 獲得Box的左上角坐標。
-   - `right_bottom()`: 獲得Box的右下角坐標。
-   - `height()`: 獲得Box的高度。
-   - `width()`: 獲得Box的寬度。
-   - `convert(mode)`: 將Box從一種形式轉換為另一種形式。
-   - `drop_empty()`: 移除空的Box。
-   - `get_empty_index()`: 獲得空Box的索引。
-   - `square()`: 轉換Box為正方形，保持中心不變。
-   - `to_list(flatten)`: 將Box轉換為列表。
-   - `to_polygons()`: 將Box轉換為 `docsaidkit.Polygons` 物件。
-   - `tolist()`: 將Box轉換為列表。
+   - `normalize(w, h)`: 正規化 Box 的坐標。
+   - `denormalize(w, h)`: 反正規化 Box 的坐標。
+   - `clip(xmin, ymin, xmax, ymax)`: 將 Box 裁剪到給定的坐標範圍。
+   - `shift(shift_x, shift_y)`: 平移 Box。
+   - `scale(factor_x, factor_y)`: 縮放 Box。
+   - `area()`: 獲得每個 Box 的面積。
+   - `aspect_ratio()`: 獲得 Box 的寬高比。
+   - `center()`: 計算 Box 的中心點。
+   - `left_top()`: 獲得 Box 的左上角坐標。
+   - `right_bottom()`: 獲得 Box 的右下角坐標。
+   - `height()`: 獲得 Box 的高度。
+   - `width()`: 獲得 Box 的寬度。
+   - `convert(mode)`: 將 Box 從一種形式轉換為另一種形式。
+   - `drop_empty()`: 移除空的 Box。
+   - `get_empty_index()`: 獲得空 Box 的索引。
+   - `square()`: 轉換 Box 為正方形，保持中心不變。
+   - `to_list(flatten)`: 將 Box 轉換為列表。
+   - `to_polygons()`: 將 Box 轉換為 `capybara.Polygons` 物件。
+   - `tolist()`: 將 Box 轉換為列表。
 
 ---
 
-## [**Polygon, Polygons**](../docsaidkit/structures/polygons.py)
+## [**Polygon, Polygons**](../capybara/structures/polygons.py)
 
 ### **Polygon**：
 
@@ -139,7 +139,7 @@
    要開始使用 `Polygon` 類，首先需要匯入它：
 
    ```python
-   from docsaidkit import Polygon
+   from capybara import Polygon
    ```
 
 2. **創建 Polygon 物件**：
@@ -163,7 +163,7 @@
    - `scale(distance, join_style)`: 返回在給定距離內的所有點的近似表示。
    - `to_convexhull()`: 計算多邊形的凸包。
    - `to_min_boxpoints()`: 將多邊形轉換為最小面積邊界框。
-   - `to_box(box_mode)`: 將多邊形轉換為邊界框，其型別為 `docsaidkit.Box`。
+   - `to_box(box_mode)`: 將多邊形轉換為邊界框，其型別為 `capybara.Box`。
    - `to_list(flatten)`: 將多邊形轉換為列表。
    - `is_empty(threshold)`: 檢查多邊形是否為空。
    - `moments`: 計算多邊形的質心。
@@ -189,7 +189,7 @@
    要開始使用 `Polygons` 類，首先需要匯入它和相關的模塊：
 
    ```python
-   from docsaidkit import Polygons
+   from capybara import Polygons
    ```
 
 2. **創建 Polygons 物件**：
@@ -205,7 +205,7 @@
    - `is_empty`: 檢查每個多邊形是否為空。
    - `to_min_boxpoints`: 將每個多邊形轉換為最小面積邊界框的點。
    - `to_convexhull`: 計算每個多邊形的凸包。
-   - `to_boxes`: 將每個多邊形轉換為邊界框，其型別為 `docsaidkit.Boxes`。
+   - `to_boxes`: 將每個多邊形轉換為邊界框，其型別為 `capybara.Boxes`。
    - `drop_empty`: 刪除空的多邊形。
    - `copy`: 複製當前 `Polygons` 物件。
    - `normalize`: 正規化所有多邊形的座標。
@@ -220,12 +220,12 @@
 
 ---
 
-### [**其他**](../docsaidkit/structures/functionals.py)
+### [**其他**](../capybara/structures/functionals.py)
 
 #### `pairwise_intersection`
 
 **功能**:
-此函數用於計算兩組Box間的每對Box的交集面積。
+此函數用於計算兩組 Box 間的每對 Box 的交集面積。
 
 **使用方式**:
 
@@ -234,17 +234,19 @@
 ```
 
 **參數**:
+
 - `Box1, Box2`: 兩個 `Boxes` 物件，代表一系列的邊界框。
 
 **返回值**:
-- `交集`: 這是一個 [N, M] 的2D numpy數組。其中，N是Box1中的Box數量，而M是Box2中的Box數量。數組中的每一個元素 (i, j) 代表Box1中的第i個Box和Box2中的第j個Box的交集面積。
+
+- `交集`: 這是一個 [N, M] 的 2D numpy 數組。其中，N 是 Box1 中的 Box 數量，而 M 是 Box2 中的 Box 數量。數組中的每一個元素 (i, j) 代表 Box1 中的第 i 個 Box 和 Box2 中的第 j 個 Box 的交集面積。
 
 ---
 
 #### `pairwise_iou`
 
 **功能**:
-用於計算兩組Box間的每一對Box的IoU值（交集對聯集的比率）。
+用於計算兩組 Box 間的每一對 Box 的 IoU 值（交集對聯集的比率）。
 
 **使用方式**:
 
@@ -253,17 +255,19 @@ iou值 = pairwise_iou(Box1, Box2)
 ```
 
 **參數**:
+
 - `Box1, Box2`: 分別代表兩組 `Boxes` 物件中的一系列邊界框。
 
 **返回值**:
-- 這是一個形狀為 [N, M] 的ndarray，其中，每個值代表對應Box對的IoU值。
+
+- 這是一個形狀為 [N, M] 的 ndarray，其中，每個值代表對應 Box 對的 IoU 值。
 
 ---
 
 #### `pairwise_ioa`
 
 **功能**:
-用於計算兩組Box間的每一對Box的IoA值（交集對面積的比率）。
+用於計算兩組 Box 間的每一對 Box 的 IoA 值（交集對面積的比率）。
 
 **使用方式**:
 
@@ -272,17 +276,19 @@ ioa值 = pairwise_ioa(Box1, Box2)
 ```
 
 **參數**:
+
 - `Box1, Box2`: 分別代表兩組 `Boxes` 物件中的一系列邊界框。
 
 **返回值**:
-- 這是一個形狀為 [N, M] 的ndarray，其中，每個值代表對應Box對的IoA值。
+
+- 這是一個形狀為 [N, M] 的 ndarray，其中，每個值代表對應 Box 對的 IoA 值。
 
 ---
 
 #### `merge_boxes`
 
 **功能**:
-此函數將重疊的Box進行合併。當Box之間的IoU值超過設定的閾值時，將進行合併。此合併過程使用圖論策略，首先將重疊的Box分組，然後計算每組的組合邊界框。
+此函數將重疊的 Box 進行合併。當 Box 之間的 IoU 值超過設定的閾值時，將進行合併。此合併過程使用圖論策略，首先將重疊的 Box 分組，然後計算每組的組合邊界框。
 
 **使用方式**:
 
@@ -291,12 +297,14 @@ merged_boxes, merged_idx = merge_boxes(Boxes, threshold=0.5)
 ```
 
 **參數**:
+
 - `Boxes`: 一個 `Boxes` 物件，代表一系列的邊界框。
-- `threshold`: IoU的閾值，當Box間的IoU超過此值時將進行合併。預設值為0.5。
+- `threshold`: IoU 的閾值，當 Box 間的 IoU 超過此值時將進行合併。預設值為 0.5。
 
 **返回值**:
+
 - `merged_boxes`: 一個新的`Boxes`物件，其中包含了合併後的邊界框。
-- `merged_idx`: 一個索引列表，每個元素代表從原始Boxes合併到新`merged_boxes`的Box組。
+- `merged_idx`: 一個索引列表，每個元素代表從原始 Boxes 合併到新`merged_boxes`的 Box 組。
 
 **注意**:
-此函數的操作需要`networkx`庫。NetworkX是一個Python套件，專為處理複雜網絡結構而設。
+此函數的操作需要`networkx`庫。NetworkX 是一個 Python 套件，專為處理複雜網絡結構而設。
