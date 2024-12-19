@@ -7,15 +7,15 @@ import numpy as np
 from shapely.geometry import JOIN_STYLE, MultiPolygon
 from shapely.geometry import Polygon as _Polygon_shapely
 
+from .boxes import _Number
+
 __all__ = [
     'Polygon', 'Polygons', 'order_points_clockwise', 'JOIN_STYLE',
 ]
 
-_MixedNumberType = Union[np.number, int, float]
-
 _Polygon = Union[
     np.ndarray,
-    List[Tuple[_MixedNumberType, _MixedNumberType]],
+    List[Tuple[_Number, _Number]],
     "Polygon"
 ]
 
@@ -23,7 +23,7 @@ _Polygons = Union[
     np.ndarray,
     List["Polygon"],
     List[np.ndarray],
-    List[List[Tuple[_MixedNumberType, _MixedNumberType]]],
+    List[List[Tuple[_Number, _Number]]],
     "Polygons"
 ]
 
@@ -72,14 +72,14 @@ class Polygon:
     def __init__(
         self,
         array: _Polygon,
-        normalized: bool = False
+        is_normalized: bool = False
     ):
         """
         Args:
             array (Union[np.ndarray, list]): A Nx2 or Nx1x2 matrix.
         """
         self._array = self._check_valid_array(array)
-        self.normalized = normalized
+        self.is_normalized = is_normalized
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({str(self._array)})"
@@ -89,6 +89,11 @@ class Polygon:
 
     def __getitem__(self, item) -> float:
         return self._array[item]
+
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, self.__class__):
+            return False
+        return np.allclose(self._array, value._array)
 
     def _check_valid_array(self, array: _Polygon) -> np.ndarray:
         if isinstance(array, (list, tuple)):
@@ -131,11 +136,11 @@ class Polygon:
         Returns:
             Normalized Polygon object.
         """
-        if self.normalized:
+        if self.is_normalized:
             warn(f'Normalized polygon is forced to do normalization.')
         arr = self._array.copy()
         arr = arr / (w, h)
-        return self.__class__(arr, normalized=True)
+        return self.__class__(arr, is_normalized=True)
 
     def denormalize(self, w: float, h: float) -> "Polygon":
         """
@@ -148,11 +153,11 @@ class Polygon:
         Returns:
             Denormalized Polygon object.
         """
-        if not self.normalized:
+        if not self.is_normalized:
             warn(f'Non-normalized polygon is forced to do denormalization.')
         arr = self._array.copy()
         arr = arr * (w, h)
-        return self.__class__(arr, normalized=False)
+        return self.__class__(arr, is_normalized=False)
 
     def clip(self, xmin: int, ymin: int, xmax: int, ymax: int) -> "Polygon":
         """
@@ -240,7 +245,7 @@ class Polygon:
     def to_box(self, box_mode: str = 'xyxy'):
         """ Converts polygon to the bounding box. """
         from .boxes import Box
-        return Box(self.boundingbox, "xywh", self.normalized).convert(box_mode)
+        return Box(self.boundingbox, "xywh", self.is_normalized).convert(box_mode)
 
     def to_list(self, flatten: bool = False) -> list:
         if flatten:
@@ -290,7 +295,7 @@ class Polygon:
         """ Get the bounding box. """
         from .boxes import Box
         bbox = cv2.boundingRect(self._array)
-        if not self.normalized:
+        if not self.is_normalized:
             bbox = bbox - np.array([0, 0, 1, 1])
         return Box(bbox, 'xywh')
 
@@ -330,12 +335,12 @@ class Polygon:
 
 class Polygons:
 
-    def __init__(self, polygons: _Polygons, normalized: bool = False):
+    def __init__(self, polygons: _Polygons, is_normalized: bool = False):
         if not isinstance(polygons, (list, np.ndarray)):
             raise TypeError(
                 f'Input type error: "{polygons}", must be list or np.ndarray type.')
-        self.normalized = normalized
-        self._polygons = [Polygon(p, normalized) for p in polygons]
+        self.is_normalized = is_normalized
+        self._polygons = [Polygon(p, is_normalized) for p in polygons]
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({str(self._polygons)})"
@@ -346,6 +351,12 @@ class Polygons:
     def __iter__(self) -> Any:
         for i in range(len(self)):
             yield self[i]
+
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, self.__class__):
+            return False
+        is_same = sum([t == x for t, x in zip(value, self)]) == len(self)
+        return is_same
 
     def __getitem__(self, item) -> Union["Polygons", "Polygon"]:
         """
@@ -391,7 +402,7 @@ class Polygons:
 
     def to_boxes(self, box_mode: str = 'xyxy'):
         from .boxes import Boxes
-        return Boxes(self.boundingbox, 'xywh', self.normalized).convert(box_mode)
+        return Boxes(self.boundingbox, 'xywh', self.is_normalized).convert(box_mode)
 
     def drop_empty(self, threshold: int = 3) -> "Polygons":
         return Polygons([p for p in self._polygons if not p.is_empty(threshold)])
@@ -400,17 +411,17 @@ class Polygons:
         return self.__class__(deepcopy(self._polygons))
 
     def normalize(self, w: float, h: float) -> "Polygons":
-        if self.normalized:
+        if self.is_normalized:
             warn(f'Normalized polygons are forced to do normalization.')
         _polygons = [x.normalize(w, h) for x in self._polygons]
-        polygons = self.__class__(_polygons, normalized=True)
+        polygons = self.__class__(_polygons, is_normalized=True)
         return polygons
 
     def denormalize(self, w: float, h: float) -> "Polygons":
-        if not self.normalized:
+        if not self.is_normalized:
             warn(f'Non-normalized polygons are forced to do denormalization.')
         _polygons = [x.denormalize(w, h) for x in self._polygons]
-        polygons = self.__class__(_polygons, normalized=False)
+        polygons = self.__class__(_polygons, is_normalized=False)
         return polygons
 
     def clip(self, xmin: int, ymin: int, xmax: int, ymax: int) -> "Polygons":
