@@ -100,11 +100,11 @@ def test_polygon_getitem():
 
 
 def test_polygon_normalized():
-    # Test initialization with normalized=True
+    # Test initialization with is_normalized=True
     array = np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]])
-    poly = Polygon(array, normalized=True)
+    poly = Polygon(array, is_normalized=True)
     assert_array_equal(poly._array, array.astype('float32'))
-    assert poly.normalized
+    assert poly.is_normalized
 
 
 def test_polygon_invalid_array():
@@ -154,28 +154,28 @@ def test_polygon_normalize():
     expected_normalized_array = np.array(
         [[0.1, 0.1], [0.3, 0.2], [0.5, 0.3]]).astype('float32')
     assert_array_equal(normalized_poly._array, expected_normalized_array)
-    assert normalized_poly.normalized
+    assert normalized_poly.is_normalized
 
 
 def test_polygon_denormalize():
     # Test denormalize method
     normalized_array = np.array([[0.1, 0.1], [0.3, 0.2], [0.5, 0.3]])
-    poly = Polygon(normalized_array, normalized=True)
+    poly = Polygon(normalized_array, is_normalized=True)
     denormalized_poly = poly.denormalize(100.0, 200.0)
     expected_denormalized_array = np.array(
         [[10.0, 20.0], [30.0, 40.0], [50.0, 60.0]]).astype('float32')
     np.testing.assert_allclose(
         denormalized_poly._array, expected_denormalized_array)
-    assert not denormalized_poly.normalized
+    assert not denormalized_poly.is_normalized
 
 
 def test_polygon_denormalize_non_normalized():
-    # Test denormalize method for non-normalized Polygon
+    # Test denormalize method for non-is_normalized Polygon
     array = np.array([[10.0, 20.0], [30.0, 40.0], [50.0, 60.0]])
     poly = Polygon(array)
     denormalized_poly = poly.denormalize(100.0, 200.0)
     assert not np.array_equal(denormalized_poly._array, array)
-    assert not denormalized_poly.normalized
+    assert not denormalized_poly.is_normalized
 
 
 def test_polygon_clip():
@@ -531,7 +531,7 @@ def test_polygons_normalize():
     array1 = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
     array2 = np.array([[7.0, 8.0], [9.0, 10.0]])
     polygons_list = [array1, array2]
-    polygons = Polygons(polygons_list, normalized=False)
+    polygons = Polygons(polygons_list, is_normalized=False)
 
     w, h = 10.0, 10.0
     normalized_polygons = polygons.normalize(w, h)
@@ -540,7 +540,7 @@ def test_polygons_normalize():
         [[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]], dtype='float32'))
     assert_array_equal(normalized_polygons[1]._array, np.array(
         [[0.7, 0.8], [0.9, 1.0]], dtype='float32'))
-    assert normalized_polygons.normalized  # Check if the normalized flag is True
+    assert normalized_polygons.is_normalized  # Check if the is_normalized flag is True
 
 
 def test_polygons_denormalize():
@@ -548,7 +548,7 @@ def test_polygons_denormalize():
     array1 = np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]])
     array2 = np.array([[0.7, 0.8], [0.9, 1.0]])
     polygons_list = [array1, array2]
-    polygons = Polygons(polygons_list, normalized=True)
+    polygons = Polygons(polygons_list, is_normalized=True)
 
     w, h = 10.0, 10.0
     denormalized_polygons = polygons.denormalize(w, h)
@@ -557,8 +557,8 @@ def test_polygons_denormalize():
         [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]))
     assert_array_equal(denormalized_polygons[1]._array, np.array(
         [[7.0, 8.0], [9.0, 10.0]]))
-    # Check if the normalized flag is False
-    assert not denormalized_polygons.normalized
+    # Check if the is_normalized flag is False
+    assert not denormalized_polygons.is_normalized
 
 
 def test_polygons_scale():

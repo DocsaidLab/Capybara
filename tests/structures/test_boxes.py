@@ -16,8 +16,8 @@ def test_invalid_input_shape():
 
 def test_normalized_array():
     array = np.array([0.1, 0.2, 0.3, 0.4])
-    box = Box(array, normalized=True)
-    assert box.normalized is True
+    box = Box(array, is_normalized=True)
+    assert box.is_normalized is True
 
 
 def test_invalid_box_mode():
@@ -83,7 +83,7 @@ def test_box_normalize():
 
 
 def test_box_denormalize():
-    box = Box((0.25, 0.25, 0.5, 0.5), box_mode=BoxMode.XYXY, normalized=True)
+    box = Box((0.25, 0.25, 0.5, 0.5), box_mode=BoxMode.XYXY, is_normalized=True)
     denormalized_box = box.denormalize(200, 200)
     assert np.allclose(denormalized_box.numpy(), np.array([50, 50, 100, 100])), "Box denormalization failed."
 
@@ -142,8 +142,8 @@ def test_invalid_input_shape():
 
 def test_normalized_array():
     array = np.array([0.1, 0.2, 0.3, 0.4])
-    box = Boxes([array], normalized=True)
-    assert box.normalized is True
+    box = Boxes([array], is_normalized=True)
+    assert box.is_normalized is True
 
 
 def test_invalid_box_mode():
@@ -209,7 +209,7 @@ def test_boxes_normalize():
 
 
 def test_boxes_denormalize():
-    boxes = Boxes([(0.25, 0.25, 0.5, 0.5), (0.3, 0.3, 0.6, 0.6)], box_mode=BoxMode.XYXY, normalized=True)
+    boxes = Boxes([(0.25, 0.25, 0.5, 0.5), (0.3, 0.3, 0.6, 0.6)], box_mode=BoxMode.XYXY, is_normalized=True)
     denormalized_boxes = boxes.denormalize(200, 200)
     assert np.allclose(denormalized_boxes.numpy(), np.array(
         [(50, 50, 100, 100), (60, 60, 120, 120)])), "Boxes denormalization failed."

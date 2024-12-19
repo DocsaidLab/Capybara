@@ -1,15 +1,16 @@
-from typing import Tuple
+from typing import Tuple, Union
 
 import cv2
 import numpy as np
 from shapely.geometry import Polygon as ShapelyPolygon
 
-from .boxes import Boxes
+from .boxes import Box, Boxes
+from .keypoints import Keypoints
 from .polygons import Polygon
 
 __all__ = [
     'pairwise_intersection', 'pairwise_iou', 'pairwise_ioa',
-    'jaccard_index', 'polygon_iou'
+    'jaccard_index', 'polygon_iou', 'is_inside_box',
 ]
 
 
@@ -205,3 +206,9 @@ def polygon_iou(poly1: Polygon, poly2: Polygon):
         iou = 0
 
     return iou
+
+
+def is_inside_box(x: Union[Box, Keypoints, Polygon], box: Box) -> np.bool_:
+    cond1 = x._array >= box.left_top
+    cond2 = x._array <= box.right_bottom
+    return np.concatenate((cond1, cond2), axis=-1).all()

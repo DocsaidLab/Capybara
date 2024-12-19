@@ -4,25 +4,20 @@ from warnings import warn
 
 import numpy as np
 
+from ..typing import _Number
+
 __all__ = ['BoxMode', 'Box', 'Boxes']
 
 _BoxMode = Union["BoxMode", int, str]
-
-_MixedNumberType = Union[np.ndarray, int, float]
-
 _Box = Union[
     np.ndarray,
-    Tuple[_MixedNumberType, _MixedNumberType,
-          _MixedNumberType, _MixedNumberType],
+    Tuple[_Number, _Number, _Number, _Number],
     "Box"
 ]
 
 _Boxes = Union[
     np.ndarray,
-    List["Box"],
-    List[np.ndarray],
-    List[Tuple[_MixedNumberType, _MixedNumberType,
-               _MixedNumberType, _MixedNumberType]],
+    List[_Box],
     "Boxes"
 ]
 
@@ -109,7 +104,7 @@ class Box:
         self,
         array: _Box,
         box_mode: _BoxMode = BoxMode.XYXY,
-        normalized: bool = False
+        is_normalized: bool = False
     ):
         """
         Args:
@@ -117,10 +112,11 @@ class Box:
             box_mode (_BoxMode):
                 Enum of different ways to represent a box.
                 see: BoxMode for more info.
-
+            is_normalized (bool):
+                Whether the box is normalized or not.
         """
         self.box_mode = BoxMode.align_code(box_mode)
-        self.normalized = normalized
+        self.is_normalized = is_normalized
         self._array = self._check_valid_array(array)
         self._xywh = BoxMode.convert(self._array, self.box_mode, BoxMode.XYWH)
 
@@ -132,6 +128,11 @@ class Box:
 
     def __getitem__(self, item) -> float:
         return self._array[item]
+
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, self.__class__):
+            return False
+        return np.allclose(self._array, value._array)
 
     def _check_valid_array(self, array: Any) -> np.ndarray:
         cond1 = isinstance(array, tuple) and len(array) == 4
@@ -187,12 +188,12 @@ class Box:
         Returns:
             Normalized Box object.
         """
-        if self.normalized:
+        if self.is_normalized:
             warn(f'Normalized box is forced to do normalization.')
         arr = self._array.copy()
         arr[::2] = arr[::2] / w
         arr[1::2] = arr[1::2] / h
-        return self.__class__(arr, self.box_mode, normalized=True)
+        return self.__class__(arr, self.box_mode, is_normalized=True)
 
     def denormalize(self, w: int, h: int) -> "Box":
         """
@@ -205,12 +206,12 @@ class Box:
         Returns:
             Denormalized Box object.
         """
-        if not self.normalized:
+        if not self.is_normalized:
             warn(f'Non-normalized box is forced to do denormalization.')
         arr = self._array.copy()
         arr[::2] = arr[::2] * w
         arr[1::2] = arr[1::2] * h
-        return self.__class__(arr, self.box_mode, normalized=False)
+        return self.__class__(arr, self.box_mode, is_normalized=False)
 
     def clip(self, xmin: int, ymin: int, xmax: int, ymax: int) -> "Box":
         """
@@ -310,7 +311,7 @@ class Box:
         p2 = np.stack([arr[0::2].sum(), arr[1]])
         p3 = arr[:2] + arr[2:]
         p4 = np.stack([arr[0], arr[1::2].sum()])
-        return Polygon(np.stack([p1, p2, p3, p4]), self.normalized)
+        return Polygon(np.stack([p1, p2, p3, p4]), self.is_normalized)
 
     @ property
     def width(self) -> np.ndarray:
@@ -364,10 +365,10 @@ class Boxes:
         self,
         array: _Boxes,
         box_mode: _BoxMode = BoxMode.XYXY,
-        normalized: bool = False
+        is_normalized: bool = False
     ):
         self.box_mode = BoxMode.align_code(box_mode)
-        self.normalized = normalized
+        self.is_normalized = is_normalized
         self._array = self._check_valid_array(array)
         self._xywh = BoxMode.convert(self._array, box_mode, BoxMode.XYWH)
 
@@ -379,13 +380,18 @@ class Boxes:
 
     def __getitem__(self, item) -> Union["Box", "Boxes"]:
         if isinstance(item, int):
-            return Box(self._array[item], self.box_mode, normalized=self.normalized)
+            return Box(self._array[item], self.box_mode, is_normalized=self.is_normalized)
         if isinstance(item, (list, slice, np.ndarray)):
-            return self.__class__(self._array[item], self.box_mode, normalized=self.normalized)
+            return self.__class__(self._array[item], self.box_mode, is_normalized=self.is_normalized)
 
     def __iter__(self) -> Any:
         for i in range(len(self)):
             yield self[i]
+
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, self.__class__):
+            return False
+        return np.allclose(self._array, value._array)
 
     def _check_valid_array(self, array: Any) -> np.ndarray:
         cond1 = isinstance(array, list)
@@ -399,8 +405,7 @@ class Boxes:
         if cond1:
             for i, x in enumerate(array):
                 try:
-                    array[i] = Box(x, box_mode=self.box_mode,
-                                   normalized=self.normalized).numpy()
+                    array[i] = Box(x, box_mode=self.box_mode, is_normalized=self.is_normalized).numpy()
                 except TypeError:
                     raise TypeError(f'Input array[{i}] must be {_Box}.')
         if cond4:
@@ -445,12 +450,12 @@ class Boxes:
         Returns:
             Normalized Box object.
         """
-        if self.normalized:
+        if self.is_normalized:
             warn(f'Normalized box is forced to do normalization.')
         arr = self._array.copy()
         arr[:, ::2] = arr[:, ::2] / w
         arr[:, 1::2] = arr[:, 1::2] / h
-        return self.__class__(arr, self.box_mode, normalized=True)
+        return self.__class__(arr, self.box_mode, is_normalized=True)
 
     def denormalize(self, w: int, h: int) -> "Boxes":
         """
@@ -463,12 +468,12 @@ class Boxes:
         Returns:
             Denormalized Boxes object.
         """
-        if not self.normalized:
+        if not self.is_normalized:
             warn(f'Non-normalized box is forced to do denormalization.')
         arr = self._array.copy()
         arr[:, ::2] = arr[:, ::2] * w
         arr[:, 1::2] = arr[:, 1::2] * h
-        return self.__class__(arr, self.box_mode, normalized=False)
+        return self.__class__(arr, self.box_mode, is_normalized=False)
 
     def clip(self, xmin: int, ymin: int, xmax: int, ymax: int) -> "Box":
         """
@@ -577,7 +582,7 @@ class Boxes:
         p2 = np.stack([arr[:, 0::2].sum(1), arr[:, 1]], axis=1)
         p3 = arr[:, :2] + arr[:, 2:]
         p4 = np.stack([arr[:, 0], arr[:, 1::2].sum(1)], axis=1)
-        return Polygons(np.stack([p1, p2, p3, p4], axis=1), self.normalized)
+        return Polygons(np.stack([p1, p2, p3, p4], axis=1), self.is_normalized)
 
     @ property
     def width(self) -> np.ndarray:
