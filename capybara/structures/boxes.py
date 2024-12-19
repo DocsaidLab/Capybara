@@ -4,10 +4,11 @@ from warnings import warn
 
 import numpy as np
 
+from ..typing import _Number
+
 __all__ = ['BoxMode', 'Box', 'Boxes']
 
 _BoxMode = Union["BoxMode", int, str]
-_Number = Union[np.number, int, float]
 _Box = Union[
     np.ndarray,
     Tuple[_Number, _Number, _Number, _Number],

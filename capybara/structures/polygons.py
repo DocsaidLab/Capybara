@@ -7,7 +7,7 @@ import numpy as np
 from shapely.geometry import JOIN_STYLE, MultiPolygon
 from shapely.geometry import Polygon as _Polygon_shapely
 
-from .boxes import _Number
+from ..typing import _Number
 
 __all__ = [
     'Polygon', 'Polygons', 'order_points_clockwise', 'JOIN_STYLE',

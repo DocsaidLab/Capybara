@@ -60,12 +60,6 @@ def test_keypoints_denormalize():
         [[1, 2], [3, 4]])), "Keypoints denormalization failed."
 
 
-def test_keypoints_is_inside_box():
-    keypoints = Keypoints([(1, 2), (3, 4)])
-    box = Box((0, 0, 10, 10), box_mode=BoxMode.XYXY)
-    assert keypoints.is_inside_box(box) == True, "Keypoints is inside box failed."
-
-
 def test_keypoints_list_numpy():
     array = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
     keypoints_list = KeypointsList(array)
@@ -104,15 +98,6 @@ def test_keypoints_list_denormalize():
     denormalized_keypoints_list = keypoints_list.denormalize(100, 100)
     assert np.allclose(denormalized_keypoints_list.numpy(), np.array(
         [[[1, 2], [3, 4]], [[5, 6], [7, 8]]])), "KeypointsList denormalization failed."
-
-
-def test_keypoints_list_is_inside_boxes():
-    keypoints_list = KeypointsList([[(1, 2), (3, 4)], [(5, 6), (7, 8)]])
-    boxes = Boxes([(0, 0, 10, 10), (5, 5, 15, 15)], box_mode=BoxMode.XYXY)
-    np.testing.assert_equal(
-        keypoints_list.is_inside_boxes(boxes), np.array([False, True]),
-        err_msg="KeypointsList is inside boxes failed."
-    )
 
 
 def test_keypoints_list_cat():

@@ -4,7 +4,8 @@ from warnings import warn
 import matplotlib
 import numpy as np
 
-from .boxes import Box, Boxes, _Number
+from ..typing import _Number
+from .boxes import Box, Boxes
 
 __all__ = ['Keypoints', 'KeypointsList']
 
@@ -104,11 +105,6 @@ class Keypoints:
         kpts = self.__class__(arr)
         kpts._is_normalized = False
         return kpts
-
-    def is_inside_box(self, box: Box) -> np.bool_:
-        cond1 = self._array >= box.left_top
-        cond2 = self._array <= box.right_bottom
-        return np.concatenate((cond1, cond2), axis=-1).all()
 
     @ property
     def is_normalized(self) -> bool:
@@ -231,11 +227,6 @@ class KeypointsList:
         kpts_list = self.__class__(arr)
         kpts_list._is_normalized = False
         return kpts_list
-
-    def is_inside_boxes(self, boxes: Union[Box, Boxes]) -> bool:
-        cond1 = self._array >= boxes.left_top
-        cond2 = self._array <= boxes.right_bottom
-        return np.concatenate((cond1, cond2), axis=-1).all((-1, -2))
 
     @ property
     def is_normalized(self) -> bool:
