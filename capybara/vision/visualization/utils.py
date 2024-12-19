@@ -141,7 +141,7 @@ def prepare_box(
     try:
         is_normalized = box.is_normalized if isinstance(box, Box) else False
         box = Box(box, box_mode=src_mode, is_normalized=is_normalized).convert(dst_mode)
-    except Exception as e:
+    except:
         i = "" if ind is None else f'es[{ind}]'
         raise ValueError(f"The input box{i} is invalid value = {box}. Should be {_Box}")
     return box
@@ -183,7 +183,7 @@ def prepare_keypoints(keypoints: _Keypoints, ind: Optional[int] = None) -> Keypo
     '''
     try:
         keypoints = Keypoints(keypoints)
-    except Exception as e:
+    except:
         i = "" if ind is None else f'_list[{ind}]'
         raise TypeError(f"The input keypoints{i} is invalid value = {keypoints}. Should be {_Keypoints}")
     return keypoints
@@ -207,7 +207,7 @@ def prepare_keypoints_list(keypoints_list: _KeypointsList) -> KeypointsList:
 def prepare_polygon(polygon: _Polygon, ind: Union[int] = None) -> Polygon:
     try:
         polygon = Polygon(polygon)
-    except Exception as e:
+    except:
         i = "" if ind is None else f's[{ind}]'
         raise TypeError(f"The input polygon{i} is invalid value = {polygon}. Should be {_Polygon}")
     return polygon
