@@ -3,6 +3,7 @@
 本模塊主要包含了影像處理、視覺幾何、視覺效果等相關功能。
 
 ## 目錄
+
 - [Functionals (`functionals.py`)](#functionals-functionalspy)
   - [`meanblur`](#1-meanblur)
   - [`gaussianblur`](#2-gaussianblur)
@@ -63,7 +64,7 @@
   - [`generate_colors`](#4-generate_colors)
   - [`draw_ocr_infos`](#5-draw_ocr_infos)
 
-## [Functionals (`functionals.py`)](../docsaidkit/vision/functionals.py)
+## [Functionals (`functionals.py`)](../capybara/vision/functionals.py)
 
 這個模塊提供了一套針對影像處理的基本功能性函數。
 
@@ -143,7 +144,7 @@
   - `threth`: 二值化閾值，預設為 cv2.THRESH_BINARY。
   - `color_base`: 色彩基礎，預設為 'BGR'。
 
-## [Geometric Transformations (`geometric.py`)](../docsaidkit/vision/geometric.py)
+## [Geometric Transformations (`geometric.py`)](../capybara/vision/geometric.py)
 
 這個模塊提供了一套針對影像進行幾何變換的功能性函數。
 
@@ -192,117 +193,144 @@
   - `img`: 輸入的 Numpy 影像。
   - `polygons`: 透視變換的四邊形列表。
 
-## [Image Processing (`improc.py`)](../docsaidkit/vision/improc.py)
+## [Image Processing (`improc.py`)](../capybara/vision/improc.py)
 
 這個模塊專注於影像的讀取、寫入、編碼、解碼以及與其他格式之間的轉換。
 
 以下是每個功能的簡短說明：
 
 ### 1. `is_numpy_img`
+
 - **功能**: 檢查給定的物件是否是一個 Numpy 影像。
 
 ### 2. `get_orientation_code`
+
 - **功能**: 從提供的流中取得方向代碼。
 
 ### 3. `jpgencode`
+
 - **功能**: 將 Numpy 影像編碼為 JPEG 格式的 bytes。
 - **參數**:
   - `img`: 輸入的 Numpy 影像。
   - `quality`: JPEG 壓縮品質。
 
 ### 4. `jpgdecode`
+
 - **功能**: 將 JPEG 格式的 bytes 解碼為 Numpy 影像。
 
 ### 5. `jpgread`
+
 - **功能**: 從給定的路徑讀取 JPEG 影像。
 
 ### 6. `pngencode`
+
 - **功能**: 將 Numpy 影像編碼為 PNG 格式的 bytes。
 
 ### 7. `pngdecode`
+
 - **功能**: 將 PNG 格式的 bytes 解碼為 Numpy 影像。
 
 ### 8. `imencode`
+
 - **功能**: 將 Numpy 影像編碼為指定的圖像格式的 bytes。
 
 ### 9. `imdecode`
+
 - **功能**: 將圖像格式的 bytes 解碼為 Numpy 影像。
 
 ### 10. `img_to_b64`
+
 - **功能**: 將 Numpy 影像轉換為 base64 編碼。
 
 ### 11. `npy_to_b64`
+
 - **功能**: 將 Numpy 陣列轉換為 base64 編碼。
 
 ### 12. `npy_to_b64str`
+
 - **功能**: 將 Numpy 陣列轉換為 base64 字串。
 
 ### 13. `img_to_b64str`
+
 - **功能**: 將 Numpy 影像轉換為 base64 字串。
 
 ### 14. `b64_to_img`
+
 - **功能**: 從 base64 編碼轉換為 Numpy 影像。
 
 ### 15. `b64str_to_img`
+
 - **功能**: 從 base64 字串轉換為 Numpy 影像。
 
 ### 16. `b64_to_npy`
+
 - **功能**: 從 base64 編碼轉換為 Numpy 陣列。
 
 ### 17. `b64str_to_npy`
+
 - **功能**: 從 base64 字串轉換為 Numpy 陣列。
 
 ### 18. `npyread`
+
 - **功能**: 從指定的路徑讀取 Numpy 陣列。
 
 ### 19. `imread`
+
 - **功能**: 從指定的路徑讀取圖像。
 
 ### 20. `imwrite`
+
 - **功能**: 將 Numpy 影像寫入指定的路徑。
 
-## [Morphology (`morphology.py`)](../docsaidkit/vision/morphology.py)
+## [Morphology (`morphology.py`)](../capybara/vision/morphology.py)
 
 這個模塊專注於形態學操作，它是影像處理中的一個重要部分，主要用於提取影像組件、修復和分隔等。
 
 以下是這些功能的詳細說明：
 
 ### 1. `imerode`：
+
 - **功能**: 對影像進行腐蝕操作。
 - **參數**:
-    - `img`: 需要處理的影像。
-    - `ksize`: 核的大小。
-    - `kstruct`: 核的結構形式。
+  - `img`: 需要處理的影像。
+  - `ksize`: 核的大小。
+  - `kstruct`: 核的結構形式。
 
 ### 2. `imdilate`：
+
 - **功能**: 對影像進行膨脹操作。
 - **參數**:
-    - 同上。
+  - 同上。
 
 ### 3. `imopen`：
+
 - **功能**: 先腐蝕後膨脹，常用於移除噪音。
 - **參數**:
-    - 同上。
+  - 同上。
 
 ### 4. `imclose`：
+
 - **功能**: 先膨脹後腐蝕，常用於關閉前景物體內部的小孔或小黑點。
 - **參數**:
-    - 同上。
+  - 同上。
 
 ### 5. `imgradient`：
+
 - **功能**: 計算影像的形態學梯度，即膨脹圖像和腐蝕圖像的差。
 - **參數**:
-    - 同上。
+  - 同上。
 
 ### 6. `imtophat`：
+
 - **功能**: 計算原始影像和開操作後影像的差，用於突顯比鄰近的像素亮度更高的細節。
 - **參數**:
-    - 同上。
+  - 同上。
 
 ### 7. `imblackhat`：
+
 - **功能**: 計算閉操作後影像和原始影像的差，用於突顯比鄰近的像素亮度更低的細節。
 - **參數**:
-    - 同上。
+  - 同上。
 
 ### 使用方式：
 
@@ -310,11 +338,11 @@
 
 例如：如果你想對一個影像 `img` 進行膨脹操作，只需調用 `imdilate(img)`。如果你想使用其他核大小或形狀，只需修改 `ksize` 和 `kstruct` 參數。
 
-## [IP Camera (`ipcam`)](../docsaidkit/vision/ipcam/)
+## [IP Camera (`ipcam`)](../capybara/vision/ipcam/)
 
 這個模塊提供了從 IP 攝像頭獲取視頻流並將其顯示在 web 應用中的功能。
 
-- **App (`app.py`)**: 定義IP攝像頭的主要應用程序。
+- **App (`app.py`)**: 定義 IP 攝像頭的主要應用程序。
 - **Camera (`camera.py`)**: 處理與攝像頭的連接和數據流。
 - **Video Streaming (`video_streaming.html`)**: 提供了攝像頭的視頻流視覺化界面。
 
@@ -325,6 +353,7 @@
 這是一個簡單的 web 應用，用於顯示 IP 攝像頭的視頻流。
 
 - **`__init__`**:
+
   - **功能**: 初始化類並設定相關配置。
   - **參數**:
     - `camera_ip`: IP 攝像頭的 IP 地址。
@@ -344,6 +373,7 @@
 這個類用於從 IP 攝像頭獲取視頻流。
 
 - **`__init__`**:
+
   - **功能**: 初始化類並打開視頻流。
   - **參數**:
     - `url`: 視頻流的源地址，可以是設備索引或網絡地址。
@@ -361,24 +391,28 @@
 2. 初始化 `WebDemo` 類，指定 IP 攝像頭的 IP 地址。
 3. 調用 `WebDemo` 類的 `run` 方法，啟動 Flask web 服務。
 
-## [Video Tools (`videotools`)](../docsaidkit/vision/videotools/)
+## [Video Tools (`videotools`)](../capybara/vision/videotools/)
 
 這個模塊專注於處理視頻文件，主要是將視頻轉換成帧。
 
 以下是該功能的詳細說明：
 
 ### 1. `is_video_file`
+
 - **功能**: 檢查指定的路徑是否存在且是支援的視頻格式。
 
 ### 2. `get_step_inds`
+
 - **功能**: 生成所需的帧索引列表。
 - **輸出**: 視頻的幀索引列表。
 
 ### 3. `_extract_frames`
+
 - **功能**: 從視頻中提取指定的帧。
 - **輸出**: 視頻的幀列表。
 
 ### 4. `video2frames`
+
 - **功能**: 使用多線程從視頻中提取帧。
 - **輸出**: 視頻的幀列表。
 
@@ -386,22 +420,25 @@
 
 如果您想從一個視頻中提取帧，只需調用 `video2frames` 函數並傳入視頻的路徑以及其他參數。
 
-例如：要從 `my_video.mp4` 提取帧，每秒2帧，從第1秒開始到第10秒結束，可以這樣做：
+例如：要從 `my_video.mp4` 提取帧，每秒 2 帧，從第 1 秒開始到第 10 秒結束，可以這樣做：
+
 ```python
 frames = video2frames('my_video.mp4', frame_per_sec=2, start_sec=1, end_sec=10)
 ```
 
 您可以選擇使用所有的預設參數，這樣將提取視頻中的所有帧：
+
 ```python
 frames = video2frames('my_video.mp4')
 ```
 
 ### 注意
+
 - 確保視頻路徑存在，並且其格式支援。
 - 使用多線程可以加快提取速度，但需要注意不要過度使用，以免耗盡系統資源。
 - 如果選擇的開始和結束時間超出了視頻的長度，則會引發異常。
 
-## [Visualization (`visualization`)](../docsaidkit/vision/visualization/)
+## [Visualization (`visualization`)](../capybara/vision/visualization/)
 
 這個模塊提供了一套專門針對圖像視覺化的功能，適合用於物體檢測或 OCR 的情境。
 
@@ -410,6 +447,7 @@ frames = video2frames('my_video.mp4')
 ### 1. `draw_box` & `draw_boxes`
 
 - **功能**: 在圖像上繪製邊界框。
+
   - `draw_box`: 繪製單一的邊界框。
   - `draw_boxes`: 同時繪製多個邊界框。
 
@@ -417,12 +455,13 @@ frames = video2frames('my_video.mp4')
   - `img`: 輸入的 Numpy 影像。
   - `coordinates`: 邊界框的坐標。
   - `color`: 線條顏色，預設為白色。
-  - `thickness`: 線條厚度，預設為2。
+  - `thickness`: 線條厚度，預設為 2。
   - `**kwargs`: 其他參數。
 
 ### 2. `draw_polygon` & `draw_polygons`
 
 - **功能**: 在圖像上繪製多邊形。
+
   - `draw_polygon`: 繪製單一的多邊形。
   - `draw_polygons`: 同時繪製多個多邊形。
 
@@ -430,7 +469,7 @@ frames = video2frames('my_video.mp4')
   - `img`: 輸入的 Numpy 影像。
   - `vertices`: 多邊形的頂點坐標。
   - `color`: 線條顏色，預設為白色。
-  - `thickness`: 線條厚度，預設為2。
+  - `thickness`: 線條厚度，預設為 2。
   - `**kwargs`: 其他參數。
 
 ### 3. `draw_text`
@@ -457,11 +496,11 @@ frames = video2frames('my_video.mp4')
 
 ### 5. `draw_ocr_infos`
 
-- **功能**: 在圖像上顯示OCR的結果。
+- **功能**: 在圖像上顯示 OCR 的結果。
 
 - **參數**:
   - `img`: 輸入的 Numpy 影像。
-  - `ocr_data`: 從OCR系統獲得的資料。
+  - `ocr_data`: 從 OCR 系統獲得的資料。
   - `display_mode`: 顯示模式，例如'bbox'或'polygon'。
   - `color`: 線條或文字的顏色。
   - `thickness`: 線條厚度。
