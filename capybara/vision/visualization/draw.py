@@ -22,9 +22,8 @@ from .utils import (_Color, _Colors, _Point, _Points, _Scale, _Scales,
 
 __all__ = [
     'draw_box', 'draw_boxes', 'draw_polygon', 'draw_polygons', 'draw_text',
-    'generate_colors', 'draw_ocr_infos', 'draw_mask',
-    # 'draw_point', 'draw_points',
-    # 'draw_keypoints', 'draw_keypoints_list',
+    'generate_colors', 'draw_mask', 'draw_point', 'draw_points', 'draw_keypoints',
+    'draw_keypoints_list',
 ]
 
 DIR = get_curdir(__file__)
@@ -503,64 +502,6 @@ def generate_colors(n: int, scheme: str = 'hsv') -> List[tuple]:
             colors = []
 
     return [tuple(int(c * 255) for c in color) for color in colors]
-
-
-def draw_ocr_infos(
-    img: np.ndarray,
-    texts: List[str],
-    polygons: Polygons,
-    colors: tuple = None,
-    concat_axis: int = 1,
-    thicknesses: int = 2,
-    font_path: str = None,
-) -> np.ndarray:
-    """
-    Draw the OCR results on the image.
-
-    Args:
-        img (np.ndarray):
-            The image to draw on.
-        texts (List[str]):
-            List of detected text strings.
-        polygons (D.Polygons):
-            List of polygons representing the boundaries of detected texts.
-        colors (tuple, optional):
-            RGB values for the drawing color.
-            If not provided, generates unique colors for each text.
-        concat_axis (int, optional):
-            Axis for concatenating the original image and the annotated one.
-            Default is 1 (horizontal).
-        thicknesses (int, optional):
-            Thickness of the drawn polygons.
-            Default is 2.
-        font_path (str, optional):
-            Path to the font file to be used.
-            If not provided, a default font "NotoSansMonoCJKtc-VF.ttf" is used.
-
-    Returns:
-        np.ndarray: An image with the original and annotated images concatenated.
-    """
-    if colors is None:
-        colors = generate_colors(len(texts), scheme='square')
-
-    export_img1 = draw_polygons(
-        img, polygons, color=colors, thickness=thicknesses)
-    export_img2 = draw_polygons(
-        np.zeros_like(img) + 255,
-        polygons,
-        color=colors,
-        thickness=thicknesses
-    )
-
-    for text, region in zip(texts, polygons):
-        text_size = max(int(0.65 * min(region.min_box_wh)), 8)
-        export_img2 = draw_text(
-            export_img2, text, region.numpy()[0],
-            text_size=text_size,
-            font_path=font_path
-        )
-
-    return np.concatenate([export_img1, export_img2], axis=concat_axis)
 
 
 def draw_mask(
