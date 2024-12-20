@@ -1,4 +1,4 @@
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 import cv2
 import numpy as np
@@ -10,7 +10,8 @@ from .polygons import Polygon
 
 __all__ = [
     'pairwise_intersection', 'pairwise_iou', 'pairwise_ioa',
-    'jaccard_index', 'polygon_iou', 'is_inside_box',
+    'jaccard_index', 'polygon_iou', 'is_inside_box', 'calc_angle',
+    'poly_angle',
 ]
 
 
@@ -212,3 +213,46 @@ def is_inside_box(x: Union[Box, Keypoints, Polygon], box: Box) -> np.bool_:
     cond1 = x._array >= box.left_top
     cond2 = x._array <= box.right_bottom
     return np.concatenate((cond1, cond2), axis=-1).all()
+
+
+def calc_angle(v1, v2):
+    """
+    Calculate the angle between two vectors.
+    """
+    # Ensure the dot product is within the valid range for arccos
+    dot_product = np.dot(v1, v2)
+    norms_product = np.linalg.norm(v1, 2) * np.linalg.norm(v2, 2)
+    cos_angle = np.clip(dot_product / norms_product, -1.0, 1.0)
+
+    angle = np.arccos(cos_angle)
+    angle = np.degrees(angle)
+
+    # Determine the direction of the angle
+    v1_3d = np.array([*v1, 0])
+    v2_3d = np.array([*v2, 0])
+    if np.cross(v1_3d, v2_3d)[-1] < 0:
+        angle = 360 - angle
+
+    return angle
+
+
+def poly_angle(
+    poly1: Polygon,
+    poly2: Optional[Polygon] = None,
+    base_vector: Tuple[int, int] = (0, 1)
+) -> float:
+    """
+    Calculate the angle between two polygons or a polygon and a base vector.
+    """
+
+    def _get_angle(poly):
+        poly_points = poly.numpy()
+        vector1 = poly_points[2] - poly_points[0]
+        vector2 = poly_points[3] - poly_points[1]
+        return vector1 + vector2
+
+    v1 = _get_angle(poly1)
+    v2 = _get_angle(poly2) if poly2 is not None else np.array(
+        base_vector, dtype='float32')
+
+    return calc_angle(v1, v2)
