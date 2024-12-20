@@ -249,6 +249,76 @@ def draw_text(
     return img
 
 
+def draw_line(
+    img: np.ndarray,
+    pt1: _Point,
+    pt2: _Point,
+    color: _Color = (0, 255, 0),
+    thickness: _Thickness = 1,
+    style: str = 'dotted',
+    gap: int = 20,
+    inplace: bool = False,
+):
+    '''
+    Draw a line on the image.
+
+    Args:
+        img (np.ndarray):
+            Image on which to draw the line.
+        pt1 (_Point):
+            The starting point of the line.
+        pt2 (_Point):
+            The ending point of the line.
+        color (_Color, optional):
+            The color of the line. Defaults to (0, 255, 0).
+        thickness (_Thickness, optional):
+            The thickness of the line. Defaults to 1.
+        style (str, optional):
+            The style of the line. It can be either 'dotted' or 'line'.
+        gap (int, optional):
+            The gap between the dots. Defaults to 20.
+        inplace (bool, optional):
+            Whether to draw on the input image directly or return a new image.
+            Defaults to False.
+
+    Raises:
+        ValueError:
+            If the style is not 'dotted' or 'line'.
+
+    Returns:
+        np.ndarray: Image with the drawn line.
+    '''
+    img = img.copy() if not inplace else img
+    img = prepare_img(img)
+    pt1 = prepare_point(pt1)
+    pt2 = prepare_point(pt2)
+    dist = ((pt1[0] - pt2[0])**2 + (pt1[1] - pt2[1])**2)**.5
+    pts = []
+    for i in np.arange(0, dist, gap):
+        r = i / dist
+        x = int((pt1[0] * (1 - r) + pt2[0] * r) + .5)
+        y = int((pt1[1] * (1 - r) + pt2[1] * r) + .5)
+        p = (x, y)
+        pts.append(p)
+
+    if style == 'dotted':
+        for p in pts:
+            cv2.circle(img, p, thickness, color, -1)
+    elif style == 'line':
+        s = pts[0]
+        e = pts[0]
+        i = 0
+        for p in pts:
+            s = e
+            e = p
+            if i % 2 == 1:
+                cv2.line(img, s, e, color, thickness)
+            i += 1
+    else:
+        raise ValueError(f"Unknown style: {style}")
+    return img
+
+
 def draw_point(
     img: np.ndarray,
     point: _Point,
