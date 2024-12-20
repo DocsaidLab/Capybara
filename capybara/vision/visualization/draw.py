@@ -23,8 +23,8 @@ from .utils import (_Color, _Colors, _Point, _Points, _Scale, _Scales,
 __all__ = [
     'draw_box', 'draw_boxes', 'draw_polygon', 'draw_polygons', 'draw_text',
     'generate_colors', 'draw_ocr_infos', 'draw_mask',
-    'draw_point', 'draw_points',
-    'draw_keypoints', 'draw_keypoints_list',
+    # 'draw_point', 'draw_points',
+    # 'draw_keypoints', 'draw_keypoints_list',
 ]
 
 DIR = get_curdir(__file__)
@@ -38,8 +38,7 @@ def draw_box(
     img: np.ndarray,
     box: _Box,
     color: _Color = (0, 255, 0),
-    thickness: _Thickness = 2,
-    inplace: bool = False,
+    thickness: _Thickness = 2
 ) -> np.ndarray:
     """
     Draws a bounding box on the image.
@@ -54,14 +53,10 @@ def draw_box(
             The color of the box to draw. Defaults to (0, 255, 0).
         thickness (_Thickness, optional):
             The thickness of the box lines to draw. Defaults to 2.
-        inplace (bool, optional):
-            Whether to draw on the input image directly or return a new image.
-            Defaults to False.
 
     Returns:
         np.ndarray: The image with the drawn box, as a numpy ndarray.
     """
-    img = img.copy() if not inplace else img
     img = prepare_img(img)
     box = prepare_box(box)
     color = prepare_color(color)
@@ -77,8 +72,7 @@ def draw_boxes(
     img: np.ndarray,
     boxes: _Boxes,
     colors: _Colors = (0, 255, 0),
-    thicknesses: _Thicknesses = 2,
-    inplace: bool = False,
+    thicknesses: _Thicknesses = 2
 ) -> np.ndarray:
     """
     Draws multiple bounding boxes on the image.
@@ -95,19 +89,15 @@ def draw_boxes(
         thickness (_Thicknesses, optional):
             The thickness of the boxes lines to draw. This can be a single
             thickness or a list of thicknesses. Defaults to 2.
-        inplace (bool, optional):
-            Whether to draw on the input image directly or return a new image.
-            Defaults to False.
 
     Returns:
         np.ndarray: The image with the drawn boxes, as a numpy ndarray.
     """
-    img = img.copy() if not inplace else img
     boxes = prepare_boxes(boxes)
     colors = prepare_colors(colors, len(boxes))
     thicknesses = prepare_thicknesses(thicknesses, len(boxes))
     for box, c, t in zip(boxes, colors, thicknesses):
-        draw_box(img, box, color=c, thickness=t, inplace=True)
+        draw_box(img, box, color=c, thickness=t)
     return img
 
 
@@ -116,8 +106,7 @@ def draw_polygon(
     polygon: _Polygon,
     color: _Color = (0, 255, 0),
     thickness: _Thickness = 2,
-    fillup: bool = False,
-    inplace: bool = False,
+    fillup=False,
     **kwargs
 ):
     """
@@ -138,14 +127,10 @@ def draw_polygon(
         fill (bool, optional):
             Whether to fill the polygon with the specified color.
             Defaults to False.
-        inplace (bool, optional):
-            Whether to draw on the input image directly or return a new image.
-            Defaults to False.
 
     Returns:
         np.ndarray: The image with the drawn polygon.
     """
-    img = img.copy() if not inplace else img
     img = prepare_img(img)
     polygon = prepare_polygon(polygon)
     color = prepare_color(color)
@@ -168,9 +153,8 @@ def draw_polygons(
     polygons: _Polygons,
     colors: _Colors = (0, 255, 0),
     thicknesses: _Thicknesses = 2,
-    fillup: bool = False,
-    inplace: bool = False,
-    ** kwargs
+    fillup=False,
+    **kwargs
 ):
     """
     Draw polygons on the input image.
@@ -199,19 +183,15 @@ def draw_polygons(
             If set to True, the polygons will be filled; otherwise, only their
             edges will be drawn.
             Defaults to False.
-        inplace (bool, optional):
-            Whether to draw on the input image directly or return a new image.
-            Defaults to False.
 
     Returns:
         np.ndarray: The image with the drawn polygons.
     """
-    img = img.copy() if not inplace else img
     polygons = prepare_polygons(polygons)
     colors = prepare_colors(colors, len(polygons))
     thicknesses = prepare_thicknesses(thicknesses, len(polygons))
     for polygon, c, t in zip(polygons, colors, thicknesses):
-        draw_polygon(img, polygon, color=c, thickness=t, fillup=fillup, inplace=True, **kwargs)
+        draw_polygon(img, polygon, color=c, thickness=t, fillup=fillup, **kwargs)
     return img
 
 
@@ -222,7 +202,6 @@ def draw_text(
     color: _Color = (0, 0, 0),
     text_size: int = 12,
     font_path: Union[str, Path] = None,
-    inplace: bool = False,
     **kwargs
 ) -> np.ndarray:
     """
@@ -245,14 +224,10 @@ def draw_text(
         **kwargs:
             Additional arguments for drawing, depending on the underlying
             library or method used.
-        inplace (bool, optional):
-            Whether to draw on the input image directly or return a new image.
-            Defaults to False.
 
     Returns:
         np.ndarray: Image with the text drawn on it.
     """
-    img = img.copy() if not inplace else img
     img = prepare_img(img)
     img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 
@@ -280,7 +255,6 @@ def draw_point(
     scale: _Scale = 1.0,
     color: _Color = (0, 255, 0),
     thickness: _Thickness = -1,
-    inplace: bool = False,
 ) -> np.ndarray:
     '''
     Draw a point on the image.
@@ -296,15 +270,11 @@ def draw_point(
             The color of the point. Defaults to (0, 255, 0).
         thickness (_Thickness, optional):
             The thickness of the point. Defaults to -1.
-        inplace (bool, optional):
-            Whether to draw on the input image directly or return a new image.
-            Defaults to False.
 
     Returns:
         np.ndarray: Image with the drawn point.
     '''
     is_gray_img = img.ndim == 2
-    img = img.copy() if not inplace else img
     img = prepare_img(img)
     point = prepare_point(point)
     color = prepare_color(color)
@@ -321,7 +291,6 @@ def draw_points(
     scales: _Scales = 1.,
     colors: _Colors = (0, 255, 0),
     thicknesses: _Thicknesses = -1,
-    inplace: bool = False,
 ) -> np.ndarray:
     '''
     Draw multiple points on the image.
@@ -337,22 +306,18 @@ def draw_points(
             The colors of the points. Defaults to (0, 255, 0).
         thicknesses (_Thicknesses, optional):
             The thicknesses of the points. Defaults to -1.
-        inplace (bool, optional):
-            Whether to draw on the input image directly or return a new image.
-            Defaults to False.
 
     Returns:
         np.ndarray: Image with the drawn points.
     '''
-    img = img.copy() if not inplace else img
-    img = prepare_img(img)
+    img = prepare_img(img).copy()
     points = prepare_points(points)
     colors = prepare_colors(colors, len(points))
     thicknesses = prepare_thicknesses(thicknesses, len(points))
     scales = prepare_scales(scales, len(points))
 
     for p, s, c, t in zip(points, scales, colors, thicknesses):
-        img = draw_point(img, p, s, c, t, inplace=True)
+        img = draw_point(img, p, s, c, t)
 
     return img
 
@@ -361,8 +326,7 @@ def draw_keypoints(
     img: np.ndarray,
     keypoints: _Keypoints,
     scale: _Scale = 1.,
-    thickness: _Thickness = -1,
-    inplace: bool = False,
+    thickness: _Thickness = -1
 ) -> np.ndarray:
     '''
     Draw keypoints on the image.
@@ -376,14 +340,10 @@ def draw_keypoints(
             The scale of the keypoints. Defaults to 1..
         thickness (_Thickness, optional):
             The thickness of the keypoints. Defaults to -1.
-        inplace (bool, optional):
-            Whether to draw on the input image directly or return a new image.
-            Defaults to False.
 
     Returns:
         np.ndarray: Image with the drawn keypoints.
     '''
-    img = img.copy() if not inplace else img
     img = prepare_img(img)
     keypoints = prepare_keypoints(keypoints)
 
@@ -396,7 +356,7 @@ def draw_keypoints(
     thickness = prepare_thickness(thickness)
     points = keypoints.numpy()[..., :2]
     for p, c in zip(points, colors):
-        img = draw_point(img, p, scale, c, thickness, inplace=True)
+        img = draw_point(img, p, scale, c, thickness)
     return img
 
 
@@ -404,8 +364,7 @@ def draw_keypoints_list(
     img: np.ndarray,
     keypoints_list: _KeypointsList,
     scales: _Scales = 1.,
-    thicknesses: _Thicknesses = -1,
-    inplace: bool = False,
+    thicknesses: _Thicknesses = -1
 ) -> np.ndarray:
     '''
     Draw keypoints list on the image.
@@ -419,20 +378,16 @@ def draw_keypoints_list(
             The scales of the keypoints. Defaults to 1..
         thicknesses (_Thicknesses, optional):
             The thicknesses of the keypoints. Defaults to -1.
-        inplace (bool, optional):
-            Whether to draw on the input image directly or return a new image.
-            Defaults to False.
 
     Returns:
         np.ndarray: Image with the drawn keypoints list.
     '''
-    img = img.copy() if not inplace else img
     img = prepare_img(img)
     keypoints_list = prepare_keypoints_list(keypoints_list)
     scales = prepare_scales(scales, len(keypoints_list))
     thicknesses = prepare_thicknesses(thicknesses, len(keypoints_list))
     for ps, s, t in zip(keypoints_list, scales, thicknesses):
-        img = draw_keypoints(img, ps, s, t, inplace=True)
+        img = draw_keypoints(img, ps, s, t)
     return img
 
 
