@@ -137,7 +137,7 @@ def draw_polygon(
     if polygon.is_normalized:
         h, w = img.shape[:2]
         polygon = polygon.denormalize(w, h)
-    polygon = polygon.numpy().astype(int).tolist()
+    polygon = polygon.numpy().astype(int)
 
     if fillup:
         img = cv2.fillPoly(img, [polygon], color=color, **kwargs)
@@ -190,7 +190,8 @@ def draw_polygons(
     colors = prepare_colors(colors, len(polygons))
     thicknesses = prepare_thicknesses(thicknesses, len(polygons))
     for polygon, c, t in zip(polygons, colors, thicknesses):
-        draw_polygon(img, polygon, color=c, thickness=t, fillup=fillup, **kwargs)
+        draw_polygon(img, polygon, color=c, thickness=t,
+                     fillup=fillup, **kwargs)
     return img
 
 
@@ -349,7 +350,8 @@ def draw_point(
     color = prepare_color(color)
     h, w = img.shape[:2]
     size = 1 + (np.sqrt(h * w) * 0.002 * scale).round().astype(int).item()
-    img = cv2.circle(img, point, radius=size, color=color, lineType=cv2.LINE_AA, thickness=thickness)
+    img = cv2.circle(img, point, radius=size, color=color,
+                     lineType=cv2.LINE_AA, thickness=thickness)
     img = img[..., 0] if is_gray_img else img
     return img
 
