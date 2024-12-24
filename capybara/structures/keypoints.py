@@ -32,27 +32,6 @@ class Keypoints:
     * v=1: labeled but not visible
     * v=2: labeled and visible
     '''
-    @staticmethod
-    def _check_valid_array(array: Any) -> np.ndarray:
-        if not isinstance(array, (list, np.ndarray)):
-            raise TypeError("Input array is not list or np.ndarray.")
-
-        if isinstance(array, list):
-            for i, x in enumerate(array):
-                if not isinstance(x, (tuple, np.ndarray)):
-                    raise TypeError(f"Input array[{i}]'s type is not tuple or np.ndarray.")
-
-        array = np.array(array, dtype='float32')
-
-        if not array.ndim == 2:
-            raise ValueError(f"Input array ndim = {array.ndim} is not 2, which is invalid.")
-
-        if not array.shape[-1] in [2, 3]:
-            raise ValueError(f"Input array's shape[-1] = {array.shape[-1]} is not in [2, 3], which is invalid.")
-
-        if array.shape[-1] == 3 and not ((array[..., 2] <= 2).all() and (array[..., 2] >= 0).all()):
-            raise ValueError('Given array is invalid because of its labels. (array[..., 2])')
-        return array.copy()
 
     def __init__(self, array: _Keypoints, cmap='rainbow', is_normalized: bool = False):
         self._array = self._check_valid_array(array)
@@ -71,6 +50,29 @@ class Keypoints:
         if not isinstance(value, self.__class__):
             return False
         return np.allclose(self._array, value._array)
+
+    def _check_valid_array(self, array: Any) -> np.ndarray:
+        cond1 = isinstance(array, np.ndarray)
+        cond2 = isinstance(array, list) and all(isinstance(x, (tuple, np.ndarray)) for x in array)
+        cond3 = isinstance(array, self.__class__)
+
+        if not (cond1 or cond2 or cond3):
+            raise TypeError(f"Input array is not {_Keypoints}, but got {type(array)}.")
+
+        if cond3:
+            array = array.numpy()
+        else:
+            array = np.array(array, dtype='float32')
+
+        if not array.ndim == 2:
+            raise ValueError(f"Input array ndim = {array.ndim} is not 2, which is invalid.")
+
+        if not array.shape[-1] in [2, 3]:
+            raise ValueError(f"Input array's shape[-1] = {array.shape[-1]} is not in [2, 3], which is invalid.")
+
+        if array.shape[-1] == 3 and not ((array[..., 2] <= 2).all() and (array[..., 2] >= 0).all()):
+            raise ValueError('Given array is invalid because of its labels. (array[..., 2])')
+        return array.copy()
 
     def numpy(self) -> np.ndarray:
         return self._array.copy()
@@ -125,39 +127,6 @@ class Keypoints:
 
 class KeypointsList:
 
-    @staticmethod
-    def _check_valid_array(array: Any) -> np.ndarray:
-        if not isinstance(array, (list, np.ndarray)):
-            raise TypeError("Input array is not list or np.ndarray.")
-
-        for i, x in enumerate(array):
-            if isinstance(x, Keypoints):
-                array[i] = x.numpy()
-            elif isinstance(x, list):
-                for j, y in enumerate(x):
-                    if not isinstance(y, tuple):
-                        raise TypeError(f"Input array[{i}][{j}] is not tuple or np.ndarray.")
-            elif isinstance(x, np.ndarray):
-                continue
-            else:
-                raise TypeError(f"Input array[{i}] is not list, np.ndarray, or Keypoints.")
-
-        array = np.array(array, dtype='float32')
-
-        if len(array) == 0:
-            return array
-
-        if array.ndim != 3:
-            raise ValueError(f"Input array's ndim = {array.ndim} is not 3, which is invalid.")
-
-        if array.shape[-1] not in [2, 3]:
-            raise ValueError(f"Input array's shape[-1] = {array.shape[-1]} is not 2 or 3, which is invalid.")
-
-        if array.shape[-1] == 3 and not ((array[..., 2] <= 2).all() and (array[..., 2] >= 0).all()):
-            raise ValueError('Given array is invalid because of its labels. (array[..., 2])')
-
-        return array
-
     def __init__(self, array: _KeypointsList, cmap='rainbow', is_normalized: bool = False) -> None:
         self._array = self._check_valid_array(array).copy()
         self._is_normalized = is_normalized
@@ -193,6 +162,37 @@ class KeypointsList:
         if not isinstance(value, self.__class__):
             return False
         return np.allclose(self._array, value._array)
+
+    def _check_valid_array(self, array: Any) -> np.ndarray:
+        cond1 = isinstance(array, np.ndarray)
+        cond2 = isinstance(array, list) and \
+            all(isinstance(x, (np.ndarray, Keypoints)) for x in array) or \
+            all(isinstance(y, tuple) for x in array for y in x)
+        cond3 = isinstance(array, self.__class__)
+
+        if not (cond1 or cond2 or cond3):
+            raise TypeError(f"Input array is not {_KeypointsList}, but got {type(array)}.")
+
+        if cond3:
+            array = array.numpy()
+        elif isinstance(array[0], Keypoints):
+            array = np.array([x.numpy() for x in array], dtype='float32')
+        else:
+            array = np.array(array, dtype='float32')
+
+        if len(array) == 0:
+            return array
+
+        if array.ndim != 3:
+            raise ValueError(f"Input array's ndim = {array.ndim} is not 3, which is invalid.")
+
+        if array.shape[-1] not in [2, 3]:
+            raise ValueError(f"Input array's shape[-1] = {array.shape[-1]} is not 2 or 3, which is invalid.")
+
+        if array.shape[-1] == 3 and not ((array[..., 2] <= 2).all() and (array[..., 2] >= 0).all()):
+            raise ValueError('Given array is invalid because of its labels. (array[..., 2])')
+
+        return array
 
     def numpy(self) -> np.ndarray:
         return self._array.copy()

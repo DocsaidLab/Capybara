@@ -100,6 +100,7 @@ def test_prepare_img():
 
 def test_prepare_box():
     tgt_box = Box((0, 0, 100, 100), box_mode="XYXY")
+    assert prepare_box(tgt_box) == tgt_box
 
     box = (0, 0, 100, 100)
     assert prepare_box(box) == tgt_box
@@ -122,6 +123,7 @@ def test_prepare_box():
 
 def test_prepare_boxes():
     boxes = Boxes([(0, 0, 100, 100), (0, 0, 100, 100)], box_mode="XYXY")
+    assert prepare_boxes(boxes) == boxes
 
     boxes_list = [(0, 0, 100, 100), (0, 0, 100, 100)]
     assert prepare_boxes(boxes_list) == boxes
@@ -143,6 +145,8 @@ def test_prepare_keypoints():
     np_keypoints = np.array(keypoints)
     assert prepare_keypoints(np_keypoints) == tgt_keypoints
 
+    assert prepare_keypoints(tgt_keypoints) == tgt_keypoints
+
     keypoints = [[0, 1], [2, 1], [3, 1]]
     with pytest.raises(TypeError, match=r"[0-9a-zA-Z=,. ]+\[\[0, 1\], \[2, 1\], \[3, 1\]\][0-9a-zA-Z=,. ()[\]]+"):
         prepare_keypoints(keypoints)
@@ -155,6 +159,8 @@ def test_prepare_keypoints_list():
             [(0, 1), (1, 2), (3, 3)],
         ]
     )
+    assert prepare_keypoints_list(tgt_keypoints_list) == tgt_keypoints_list
+
     keypoints_list = [
         [(0, 1), (1, 2), (3, 4)],
         [(0, 1), (1, 2), (3, 3)],

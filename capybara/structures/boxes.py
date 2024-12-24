@@ -141,7 +141,7 @@ class Box:
             array, np.ndarray) and array.ndim == 1 and len(array) == 4
         cond4 = isinstance(array, self.__class__)
         if not (cond1 or cond2 or cond3 or cond4):
-            raise TypeError(f'Input array must be {_Box}.')
+            raise TypeError(f'Input array must be {_Box}, but got {type(array)}.')
         if cond3:
             array = array.astype('float32')
         elif cond4:
