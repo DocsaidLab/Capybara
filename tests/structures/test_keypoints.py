@@ -14,6 +14,12 @@ def test_invalid_input_shape():
         Keypoints([(1, 2, 3, 4), (1, 2, 3, 4)])
 
 
+def test_keypoints_eat_itself():
+    keypoints1 = Keypoints([(1, 2), (3, 4)])
+    keypoints2 = Keypoints(keypoints1)
+    assert np.allclose(keypoints1.numpy(), keypoints2.numpy()), "Keypoints eat itself failed."
+
+
 def test_normalized_array():
     array = np.array([[0.1, 0.2], [0.3, 0.4]])
     keypoints = Keypoints(array, is_normalized=True)
