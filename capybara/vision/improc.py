@@ -1,3 +1,4 @@
+import platform
 import warnings
 from pathlib import Path
 from typing import Any, List, Union
@@ -6,13 +7,17 @@ import cv2
 import numpy as np
 import piexif
 import pybase64
-import pyheif
 from pdf2image import convert_from_bytes, convert_from_path
 from turbojpeg import TurboJPEG
 
 from ..enums import IMGTYP, ROTATE
 from .functionals import imcvtcolor
 from .geometric import imrotate90
+
+if platform.system() == 'Linux':
+    import pyheif
+else:
+    print('Image file with `.heif` or `heic` are only available on Linux system.')
 
 __all__ = [
     'imread', 'imwrite', 'imencode', 'imdecode', 'img_to_b64', 'img_to_b64str',
@@ -225,6 +230,8 @@ def imread(
         raise FileExistsError(f'{path} can not found.')
 
     if Path(path).suffix.lower() == '.heic':
+        if platform.system() != 'Linux':
+            raise ValueError('HEIC file is only supported on Linux system.')
         img = read_heic_to_numpy(str(path))
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     else:
