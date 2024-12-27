@@ -4,12 +4,13 @@ from typing import List, Optional, Tuple, Union
 import cv2
 import numpy as np
 
-from ..enums import BORDER
+from ..enums import BORDER, INTER
 from ..structures import Box, Boxes
+from .geometric import imresize
 
 __all__ = [
     'meanblur', 'gaussianblur', 'medianblur', 'imcvtcolor', 'imadjust', 'pad',
-    'imcropbox', 'imcropboxes', 'imbinarize', 'centercrop',
+    'imcropbox', 'imcropboxes', 'imbinarize', 'centercrop', 'imresize_and_pad_if_need'
 ]
 
 _Ksize = Union[int, Tuple[int, int], np.ndarray]
@@ -194,7 +195,7 @@ def imadjust(
 def pad(
     img: np.ndarray,
     pad_size: Union[int, Tuple[int, int], Tuple[int, int, int, int]],
-    fill_value: Optional[Union[int, Tuple[int, int, int]]] = 0,
+    pad_value: Optional[Union[int, Tuple[int, int, int]]] = 0,
     pad_mode: Union[str, int, BORDER] = BORDER.CONSTANT
 ) -> np.ndarray:
     """
@@ -208,14 +209,14 @@ def pad(
             all sides, a tuple (pad_top, pad_bottom, pad_left, pad_right) to
             specify different padding amounts for each side, or a tuple
             (pad_height, pad_width) to specify equal padding for height and width.
-        fill_value (Optional[Union[int, Tuple[int, int, int]]], optional):
+        pad_value (Optional[Union[int, Tuple[int, int, int]]], optional):
             The value used for padding. If the input image is a color image (3 channels),
-            the fill_value can be an integer or a tuple (R, G, B) to specify the
+            the pad_value can be an integer or a tuple (R, G, B) to specify the
             color for padding. If the input image is grayscale (1 channel),
-            the fill_value should be an integer. Defaults to 0.
+            the pad_value should be an integer. Defaults to 0.
         pad_mode (Union[str, int, BORDER], optional):
             The padding mode. Available options are:
-                - BORDER.CONSTANT: Pad with constant value (fill_value).
+                - BORDER.CONSTANT: Pad with constant value (pad_value).
                 - BORDER.REPLICATE: Pad by replicating the edge pixels.
                 - BORDER.REFLECT: Pad by reflecting the image around the edge.
                 - BORDER.REFLECT101: Pad by reflecting the image around the edge,
@@ -238,17 +239,17 @@ def pad(
 
     pad_mode = BORDER.obj_to_enum(pad_mode)
     if pad_mode == BORDER.CONSTANT:
-        if img.ndim == 3 and isinstance(fill_value, int):
-            fill_value = (fill_value, ) * img.shape[-1]
-        cond1 = img.ndim == 3 and len(fill_value) == img.shape[-1]
-        cond2 = img.ndim == 2 and isinstance(fill_value, int)
+        if img.ndim == 3 and isinstance(pad_value, int):
+            pad_value = (pad_value, ) * img.shape[-1]
+        cond1 = img.ndim == 3 and len(pad_value) == img.shape[-1]
+        cond2 = img.ndim == 2 and isinstance(pad_value, int)
         if not (cond1 or cond2):
             raise ValueError(
-                f'channel of image is {img.shape[-1]} but length of fill is {len(fill_value)}.')
+                f'channel of image is {img.shape[-1]} but length of fill is {len(pad_value)}.')
 
     img = cv2.copyMakeBorder(
         src=img, top=top, bottom=bottom, left=left, right=right,
-        borderType=pad_mode, value=fill_value
+        borderType=pad_mode, value=pad_value
     )
 
     return img
@@ -384,3 +385,30 @@ def centercrop(img: np.ndarray) -> np.ndarray:
     """
     box = Box([0, 0, img.shape[1], img.shape[0]]).square()
     return imcropbox(img, box)
+
+
+def imresize_and_pad_if_need(
+    img: np.ndarray,
+    max_h: int,
+    max_w: int,
+    interpolation: Union[str, int, INTER] = INTER.BILINEAR,
+    pad_value: Optional[Union[int, Tuple[int, int, int]]] = 0,
+    pad_mode: Union[str, int, BORDER] = BORDER.CONSTANT,
+    return_scale: bool = False,
+):
+    raw_h, raw_w = img.shape[:2]
+    scale = min(max_h / raw_h, max_w / raw_w)
+    dst_h, dst_w = min(int(raw_h * scale), max_h), min(int(raw_w * scale), max_w)
+    img = imresize(
+        img,
+        (dst_h, dst_w),
+        interpolation=interpolation,
+    )
+    img_h, img_w = img.shape[:2]
+
+    pad_size = (0, max_h - img_h, 0, max_w - img_w)
+    img = pad(img, pad_size, pad_value, pad_mode)
+    if return_scale:
+        return img, scale
+    else:
+        return img

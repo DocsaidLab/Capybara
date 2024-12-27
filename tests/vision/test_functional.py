@@ -3,7 +3,8 @@ import numpy as np
 import pytest
 
 from capybara import (BORDER, Box, Boxes, gaussianblur, imbinarize, imcropbox,
-                      imcropboxes, imcvtcolor, meanblur, medianblur, pad)
+                      imcropboxes, imcvtcolor, imresize_and_pad_if_need,
+                      meanblur, medianblur, pad)
 
 
 def test_meanblur():
@@ -72,14 +73,14 @@ def test_pad_constant_gray():
 
     # 測試等值填充
     pad_size = 10
-    fill_value = 128
-    padded_img = pad(img, pad_size=pad_size, fill_value=fill_value)
+    pad_value = 128
+    padded_img = pad(img, pad_size=pad_size, pad_value=pad_value)
     assert padded_img.shape == (
         img.shape[0] + 2 * pad_size, img.shape[1] + 2 * pad_size)
-    assert np.all(padded_img[:pad_size, :] == fill_value)
-    assert np.all(padded_img[-pad_size:, :] == fill_value)
-    assert np.all(padded_img[:, :pad_size] == fill_value)
-    assert np.all(padded_img[:, -pad_size:] == fill_value)
+    assert np.all(padded_img[:pad_size, :] == pad_value)
+    assert np.all(padded_img[-pad_size:, :] == pad_value)
+    assert np.all(padded_img[:, :pad_size] == pad_value)
+    assert np.all(padded_img[:, -pad_size:] == pad_value)
 
 
 def test_pad_constant_color():
@@ -88,14 +89,14 @@ def test_pad_constant_color():
 
     # 測試等值填充
     pad_size = 5
-    fill_value = (255, 0, 0)  # 紅色
-    padded_img = pad(img, pad_size=pad_size, fill_value=fill_value)
+    pad_value = (255, 0, 0)  # 紅色
+    padded_img = pad(img, pad_size=pad_size, pad_value=pad_value)
     assert padded_img.shape == (
         img.shape[0] + 2 * pad_size, img.shape[1] + 2 * pad_size, img.shape[2])
-    assert np.all(padded_img[:pad_size, :, :] == fill_value)
-    assert np.all(padded_img[-pad_size:, :, :] == fill_value)
-    assert np.all(padded_img[:, :pad_size, :] == fill_value)
-    assert np.all(padded_img[:, -pad_size:, :] == fill_value)
+    assert np.all(padded_img[:pad_size, :, :] == pad_value)
+    assert np.all(padded_img[-pad_size:, :, :] == pad_value)
+    assert np.all(padded_img[:, :pad_size, :] == pad_value)
+    assert np.all(padded_img[:, -pad_size:, :] == pad_value)
 
 
 def test_pad_replicate():
@@ -282,3 +283,21 @@ def test_imbinarize_invalid_input():
     img = np.random.randint(0, 256, size=(100, 100, 100), dtype=np.uint8)
     with pytest.raises(cv2.error):
         imbinarize(img)
+
+
+def test_imresize_and_pad_if_need():
+    img = np.ones((150, 120, 3), dtype='uint8')
+    processed = imresize_and_pad_if_need(img, 150, 150)
+    np.testing.assert_allclose(processed[:, 120:], np.zeros((150, 30, 3), dtype='uint8'))
+    
+    img = np.ones((151, 119, 3), dtype='uint8')
+    processed = imresize_and_pad_if_need(img, 150, 150)
+    np.testing.assert_allclose(processed[:, 120:], np.zeros((150, 30, 3), dtype='uint8'))
+
+    img = np.ones((200, 100, 3), dtype='uint8')
+    processed = imresize_and_pad_if_need(img, 100, 100)
+    np.testing.assert_allclose(processed[:, 50:], np.zeros((100, 50, 3), dtype='uint8'))
+
+    img = np.ones((20, 20, 3), dtype='uint8')
+    processed = imresize_and_pad_if_need(img, 100, 100)
+    np.testing.assert_allclose(processed, np.ones((100, 100, 3), dtype='uint8'))
