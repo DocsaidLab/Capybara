@@ -92,7 +92,7 @@ echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.4/lib64${LD_LIBRARY_PATH:+:${LD_
 1. Install the package from PyPI:
 
    ```bash
-   pip install capybara
+   pip install capybara_docsaid
    ```
 
 2. Verify the installation:
@@ -127,7 +127,7 @@ echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.4/lib64${LD_LIBRARY_PATH:+:${LD_
 4. Install the built wheel file:
 
    ```bash
-   pip install dist/capybara-*-py3-none-any.whl
+   pip install dist/capybara_docsaid-*-py3-none-any.whl
    ```
 
 ### Installation via Docker

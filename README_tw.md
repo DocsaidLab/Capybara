@@ -92,7 +92,7 @@ echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.4/lib64${LD_LIBRARY_PATH:+:${LD_
 1. 透過 PyPI 安裝套件：
 
    ```bash
-   pip install capybara
+   pip install capybara_docsaid
    ```
 
 2. 驗證安裝：
@@ -127,7 +127,7 @@ echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.4/lib64${LD_LIBRARY_PATH:+:${LD_
 4. 安裝建置完成的 wheel 檔：
 
    ```bash
-   pip install dist/capybara-*-py3-none-any.whl
+   pip install dist/capybara_docsaid-*-py3-none-any.whl
    ```
 
 ### 透過 docker 安裝（建議）
