@@ -10,7 +10,7 @@
 
 ## 介紹
 
-![title](./docs/title.webp)
+![title](https://raw.githubusercontent.com/DocsaidLab/Capybara/refs/heads/main/docs/title.webp)
 
 本專案是一個影像處理與深度學習的工具箱，主要包括以下幾個部分：
 
@@ -87,6 +87,22 @@ echo 'export PATH=/usr/local/cuda-12.4/bin${PATH:+:${PATH}}' >> ~/.bashrc
 echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.4/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}' >> ~/.bashrc
 ```
 
+### 透過 PyPI 安裝
+
+1. 透過 PyPI 安裝套件：
+
+   ```bash
+   pip install capybara
+   ```
+
+2. 驗證安裝：
+
+   ```bash
+   python -c "import capybara; print(capybara.__version__)"
+   ```
+
+3. 若顯示版本號，則安裝成功。
+
 ### 透過 git clone 安裝
 
 1. 下載本專案：
@@ -118,7 +134,13 @@ echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.4/lib64${LD_LIBRARY_PATH:+:${LD_
 
 若想在部署或協同開發時避免環境衝突，建議使用 Docker，以下為簡要示範流程：
 
-1. 進入專案資料夾，執行建置腳本：
+1. 下載本專案：
+
+   ```bash
+   git clone https://github.com/DocsaidLab/Capybara.git
+   ```
+
+2. 進入專案資料夾，執行建置腳本：
 
    ```bash
    cd Capybara
@@ -127,7 +149,7 @@ echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.4/lib64${LD_LIBRARY_PATH:+:${LD_
 
    這會使用專案中的 [**Dockerfile**](https://github.com/DocsaidLab/Capybara/blob/main/docker/Dockerfile) 來建立映像檔；映像檔預設以 `nvcr.io/nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04` 為基底，提供 ONNXRuntime 推理所需的 CUDA 環境。
 
-2. 建置完成後，使用指令掛載工作目錄並執行程式：
+3. 建置完成後，使用指令掛載工作目錄並執行程式：
 
    ```bash
    docker run -v ${PWD}:/code -it docsaid_training_base_image your_scripts.py

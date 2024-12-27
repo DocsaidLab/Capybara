@@ -10,7 +10,7 @@
 
 ## Introduction
 
-![title](./docs/title.webp)
+![title](https://raw.githubusercontent.com/DocsaidLab/Capybara/refs/heads/main/docs/title.webp)
 
 This project is an image processing and deep learning toolkit, mainly consisting of the following parts:
 
@@ -87,6 +87,22 @@ echo 'export PATH=/usr/local/cuda-12.4/bin${PATH:+:${PATH}}' >> ~/.bashrc
 echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.4/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}' >> ~/.bashrc
 ```
 
+### Installation via PyPI
+
+1. Install the package from PyPI:
+
+   ```bash
+   pip install capybara
+   ```
+
+2. Verify the installation:
+
+   ```bash
+   python -c "import capybara; print(capybara.__version__)"
+   ```
+
+3. If the version number is displayed, the installation was successful.
+
 ### Installation via Git Clone
 
 1. Clone this repository:
@@ -114,11 +130,17 @@ echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.4/lib64${LD_LIBRARY_PATH:+:${LD_
    pip install dist/capybara-*-py3-none-any.whl
    ```
 
-### Installation via Docker (Recommended)
+### Installation via Docker
 
 To avoid environment conflicts during deployment or collaborative development, it's recommended to use Docker. Here's a brief guide:
 
-1. Enter the project directory and run the build script:
+1. Clone this repository:
+
+   ```bash
+   git clone https://github.com/DocsaidLab/Capybara.git
+   ```
+
+2. Enter the project directory and run the build script:
 
    ```bash
    cd Capybara
@@ -127,7 +149,7 @@ To avoid environment conflicts during deployment or collaborative development, i
 
    This will build an image using the [**Dockerfile**](https://github.com/DocsaidLab/Capybara/blob/main/docker/Dockerfile) in the project. The image is based on `nvcr.io/nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04` by default, providing the CUDA environment required for ONNXRuntime inference.
 
-2. After the build is complete, mount the working directory and run the program:
+3. After the build is complete, mount the working directory and run the program:
 
    ```bash
    docker run -v ${PWD}:/code -it docsaid_training_base_image your_scripts.py
