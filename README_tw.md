@@ -4,8 +4,9 @@
 
 <p align="left">
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache%202-dfd.svg"></a>
-    <a href="https://github.com/DocsaidLab/Capybara/releases"><img src="https://img.shields.io/github/v/release/DocsaidLab/Capybara?color=ffa"></a>
     <a href=""><img src="https://img.shields.io/badge/python-3.10+-aff.svg"></a>
+    <a href="https://github.com/DocsaidLab/Capybara/releases"><img src="https://img.shields.io/github/v/release/DocsaidLab/Capybara?color=ffa"></a>
+    <a href="https://pypi.org/project/capybara_docsaid/"><img src="https://img.shields.io/pypi/v/capybara_docsaid.svg"></a>
 </p>
 
 ## 介紹
@@ -92,7 +93,7 @@ echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.4/lib64${LD_LIBRARY_PATH:+:${LD_
 1. 透過 PyPI 安裝套件：
 
    ```bash
-   pip install capybara_docsaid
+   pip install capybara-docsaid
    ```
 
 2. 驗證安裝：
