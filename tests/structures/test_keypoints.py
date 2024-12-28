@@ -66,6 +66,11 @@ def test_keypoints_denormalize():
         [[1, 2], [3, 4]])), "Keypoints denormalization failed."
 
 
+def test_keypoints_list_empty_input():
+    keypoints_list = KeypointsList([])
+    np.testing.assert_allclose(keypoints_list.numpy(), np.array([], dtype='float32'))
+
+
 def test_keypoints_list_numpy():
     array = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
     keypoints_list = KeypointsList(array)

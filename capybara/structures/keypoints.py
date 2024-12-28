@@ -165,17 +165,18 @@ class KeypointsList:
 
     def _check_valid_array(self, array: Any) -> np.ndarray:
         cond1 = isinstance(array, np.ndarray)
-        cond2 = isinstance(array, list) and \
+        cond2 = isinstance(array, list) and len(array) == 0
+        cond3 = isinstance(array, list) and \
             all(isinstance(x, (np.ndarray, Keypoints)) for x in array) or \
             all(isinstance(y, tuple) for x in array for y in x)
-        cond3 = isinstance(array, self.__class__)
+        cond4 = isinstance(array, self.__class__)
 
-        if not (cond1 or cond2 or cond3):
+        if not (cond1 or cond2 or cond3 or cond4):
             raise TypeError(f"Input array is not {_KeypointsList}, but got {type(array)}.")
 
-        if cond3:
+        if cond4:
             array = array.numpy()
-        elif isinstance(array[0], Keypoints):
+        elif len(array) and isinstance(array[0], Keypoints):
             array = np.array([x.numpy() for x in array], dtype='float32')
         else:
             array = np.array(array, dtype='float32')
