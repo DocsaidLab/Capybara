@@ -155,6 +155,8 @@ def imrotate(
 def imwarp_quadrangle(
     img: np.ndarray,
     polygon: Union[Polygon, np.ndarray],
+    dst_size: Tuple[int, int] = None,
+    do_order_points: bool = True,
 ) -> np.ndarray:
     """
     Apply a 4-point perspective transform to an image using a given polygon.
@@ -164,6 +166,14 @@ def imwarp_quadrangle(
             The input image to be transformed.
         polygon (Union[Polygon, np.ndarray]):
             The polygon object containing the four points defining the transform.
+        dst_size (Tuple[int, int], optional):
+            The size of the transformed image. If not given, the size is calculated
+            from the min area rectangle of the polygon.
+            format: (width, height). Default: None.
+        do_order_points (bool, optional):
+            Order points clockwise or not. Default: True.
+            The order of the points should be:
+                Top-left, Top-right, Bottom-right, Bottom-left.
 
     Raises:
         TypeError:
@@ -185,14 +195,19 @@ def imwarp_quadrangle(
         raise ValueError(
             f'Input polygon, which is not contain 4 points is invalid.')
 
-    width, height = polygon.min_box_wh
-    if width < height:
-        width, height = height, width
+    if dst_size is None:
+        width, height = polygon.min_box_wh
+        if width < height:
+            width, height = height, width
+    else:
+        width, height = dst_size
 
-    src_pts = order_points_clockwise(polygon.numpy())
-    w_rect, h_rect = polygon.boundingbox[2:]
-    if h_rect / w_rect > 4:
-        src_pts = np.roll(src_pts, -1, axis=0)
+    width = int(width)
+    height = int(height)
+
+    src_pts = polygon.numpy()
+    if do_order_points:
+        src_pts = order_points_clockwise(src_pts)
 
     dst_pts = np.array([[0, 0],
                         [width, 0],
@@ -200,12 +215,14 @@ def imwarp_quadrangle(
                         [0, height]], dtype="float32")
 
     matrix = cv2.getPerspectiveTransform(src_pts, dst_pts)
-    return cv2.warpPerspective(img, matrix, (int(width), int(height)))
+    return cv2.warpPerspective(img, matrix, (width, height))
 
 
 def imwarp_quadrangles(
     img: np.ndarray,
     polygons: Polygons,
+    dst_size: Tuple[int, int] = None,
+    do_order_points: bool = True,
 ) -> List[np.ndarray]:
     """
     Apply a 4-point perspective transform to an image using a given polygons.
@@ -215,6 +232,14 @@ def imwarp_quadrangles(
             The input image to be transformed.
         polygons (Polygons):
             The polygons object containing the four points defining the transform.
+        dst_size (Tuple[int, int], optional):
+            The size of the transformed image. If not given, the size is calculated
+            from the min area rectangle of the polygon.
+            format: (width, height). Default: None.
+        do_order_points (bool, optional):
+            Order points clockwise or not. Default: True.
+            The order of the points should be:
+                Top-left, Top-right, Bottom-right, Bottom-left.
 
     Returns:
         List[np.ndarray]: The transformed image.
@@ -222,4 +247,10 @@ def imwarp_quadrangles(
     if not isinstance(polygons, Polygons):
         raise TypeError(
             f'Input type of polygons {type(polygons)} not supported.')
-    return [imwarp_quadrangle(img, poly) for poly in polygons]
+    return [
+        imwarp_quadrangle(
+            img, poly,
+            dst_size=dst_size,
+            do_order_points=do_order_points
+        ) for poly in polygons
+    ]
