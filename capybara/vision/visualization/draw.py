@@ -10,7 +10,7 @@ from ...structures import Polygons
 from ...structures.boxes import _Box, _Boxes
 from ...structures.keypoints import _Keypoints, _KeypointsList
 from ...structures.polygons import _Polygon, _Polygons
-from ...utils import download_from_docsaid, get_curdir
+from ...utils import download_from_google, get_curdir
 from ..geometric import imresize
 from .utils import (_Color, _Colors, _Point, _Points, _Scale, _Scales,
                     _Thickness, _Thicknesses, prepare_box, prepare_boxes,
@@ -29,8 +29,8 @@ __all__ = [
 DIR = get_curdir(__file__)
 
 if not (font_path := DIR / "NotoSansMonoCJKtc-VF.ttf").exists():
-    file_id = "DiSqmnitNm3ZTPj"
-    download_from_docsaid(file_id, font_path.name, str(font_path))
+    file_id = "1m6jvsBGKgQsxzpIoe4iEp_EqFxYXe7T1"
+    download_from_google(file_id, font_path.name, DIR)
 
 
 def draw_box(
@@ -142,7 +142,8 @@ def draw_polygon(
     if fillup:
         img = cv2.fillPoly(img, [polygon], color=color, **kwargs)
     else:
-        img = cv2.polylines(img, [polygon], isClosed=True, color=color, thickness=thickness, **kwargs)
+        img = cv2.polylines(img, [polygon], isClosed=True,
+                            color=color, thickness=thickness, **kwargs)
 
     return img
 
