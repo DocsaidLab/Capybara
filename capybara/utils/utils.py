@@ -8,7 +8,6 @@ from ..enums import COLORSTR, FORMATSTR
 
 __all__ = [
     'make_batch', 'colorstr', 'pprint',
-    'download_from_docsaid',
     'download_from_google',
 ]
 
@@ -129,10 +128,3 @@ def download_from_google(file_id: str, file_name: str, target: str = "."):
         print(f"File successfully downloaded to: {file_path}")
     except Exception as e:
         raise Exception(f"File download failed: {e}")
-
-
-def download_from_docsaid(file_id: str, file_name: str, target: str):
-    os.system(
-        f"wget https://cloud.docsaid.org/s/{
-            file_id}/download/{file_name} -O {target}"
-    )
