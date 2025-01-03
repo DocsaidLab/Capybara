@@ -7,6 +7,7 @@
     <a href=""><img src="https://img.shields.io/badge/python-3.10+-aff.svg"></a>
     <a href="https://github.com/DocsaidLab/Capybara/releases"><img src="https://img.shields.io/github/v/release/DocsaidLab/Capybara?color=ffa"></a>
     <a href="https://pypi.org/project/capybara_docsaid/"><img src="https://img.shields.io/pypi/v/capybara_docsaid.svg"></a>
+    <a href="https://pypi.org/project/capybara_docsaid/"><img src="https://img.shields.io/pypi/dm/capybara_docsaid?color=9cf"></a>
 </p>
 
 ## 介紹
