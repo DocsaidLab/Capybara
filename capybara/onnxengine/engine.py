@@ -8,6 +8,7 @@ import onnxruntime as ort
 
 from ..enums import EnumCheckMixin
 from .metadata import get_onnx_metadata
+from .tools import get_onnx_input_infos, get_onnx_output_infos
 
 
 class Backend(EnumCheckMixin, Enum):
@@ -67,15 +68,8 @@ class ONNXEngine:
         self.providers = self.sess.get_providers()
         self.provider_options = self.sess.get_provider_options()
 
-        self.input_infos = {
-            x.name: {'shape': x.shape, 'dtype': x.type}
-            for x in self.sess.get_inputs()
-        }
-
-        self.output_infos = {
-            x.name: {'shape': x.shape, 'dtype': x.type}
-            for x in self.sess.get_outputs()
-        }
+        self.input_infos = get_onnx_input_infos(model_path)
+        self.output_infos = get_onnx_output_infos(model_path)
 
     def __call__(self, **xs) -> Dict[str, np.ndarray]:
         output_names = list(self.output_infos.keys())
