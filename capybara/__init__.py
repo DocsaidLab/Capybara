@@ -5,4 +5,4 @@ from .structures import *
 from .utils import *
 from .vision import *
 
-__version__ = '0.5.3'
+__version__ = '0.6.0'
