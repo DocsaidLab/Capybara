@@ -140,6 +140,7 @@ def prepare_box(
     '''
     try:
         is_normalized = box.is_normalized if isinstance(box, Box) else False
+        src_mode = box.box_mode if isinstance(box, Box) else src_mode
         box = Box(box, box_mode=src_mode, is_normalized=is_normalized).convert(dst_mode)
     except:
         i = "" if ind is None else f'es[{ind}]'

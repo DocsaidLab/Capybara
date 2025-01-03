@@ -102,6 +102,9 @@ def test_prepare_box():
     tgt_box = Box((0, 0, 100, 100), box_mode="XYXY")
     assert prepare_box(tgt_box) == tgt_box
 
+    tgt_box = Box((0, 0, 100, 100), box_mode="XYWH")
+    assert prepare_box(tgt_box) == tgt_box
+
     box = (0, 0, 100, 100)
     assert prepare_box(box) == tgt_box
 
