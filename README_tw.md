@@ -154,7 +154,7 @@ echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.4/lib64${LD_LIBRARY_PATH:+:${LD_
 3. 建置完成後，使用指令掛載工作目錄並執行程式：
 
    ```bash
-   docker run -v ${PWD}:/code -it docsaid_training_base_image your_scripts.py
+   docker run -v ${PWD}:/code -it capybara_infer_image your_scripts.py
    ```
 
    若需 GPU 加速，可於執行時加入 `--gpus all`。

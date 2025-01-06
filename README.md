@@ -154,7 +154,7 @@ To avoid environment conflicts during deployment or collaborative development, i
 3. After the build is complete, mount the working directory and run the program:
 
    ```bash
-   docker run -v ${PWD}:/code -it docsaid_training_base_image your_scripts.py
+   docker run -v ${PWD}:/code -it capybara_infer_image your_scripts.py
    ```
 
    To enable GPU acceleration, add `--gpus all` when running the command.
