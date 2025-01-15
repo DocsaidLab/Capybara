@@ -48,7 +48,8 @@ class ONNXEngineIOBinding:
         sess_options = self._get_session_info(session_option)
 
         # setting onnxruntime session
-        model_path = str(model_path) if isinstance(model_path, Path) else model_path
+        model_path = str(model_path) if isinstance(
+            model_path, Path) else model_path
         self.sess = ort.InferenceSession(
             model_path,
             sess_options=sess_options,
@@ -62,9 +63,11 @@ class ONNXEngineIOBinding:
         self.providers = self.sess.get_providers()
         self.provider_options = self.sess.get_provider_options()
 
-        input_infos, output_infos = self._init_io_infos(model_path, input_initializer)
+        input_infos, output_infos = self._init_io_infos(
+            model_path, input_initializer)
 
-        io_binding, x_ortvalues, y_ortvalues = self._setup_io_binding(input_infos, output_infos)
+        io_binding, x_ortvalues, y_ortvalues = self._setup_io_binding(
+            input_infos, output_infos)
         self.io_binding = io_binding
         self.x_ortvalues = x_ortvalues
         self.y_ortvalues = y_ortvalues
@@ -100,20 +103,28 @@ class ONNXEngineIOBinding:
         return sess_opt
 
     def _init_io_infos(self, model_path, input_initializer: dict):
-        sess = ort.InferenceSession(
-            model_path,
-            providers=['CPUExecutionProvider'],
-        )
-        outs = sess.run(None, input_initializer)
-        input_shapes = {k: v.shape for k, v in input_initializer.items()}
-        output_shapes = {x.name: o.shape for x, o in zip(sess.get_outputs(), outs)}
+
+        try:
+            with ort.InferenceSession(model_path, providers=['CPUExecutionProvider']) as cpu_sess:
+                outs = cpu_sess.run(None, input_initializer)
+                input_shapes = {k: v.shape for k,
+                                v in input_initializer.items()}
+                output_shapes = {
+                    x.name: o.shape
+                    for x, o in zip(cpu_sess.get_outputs(), outs)
+                }
+        except Exception as e:
+            raise RuntimeError(f"Failed to run CPU check session: {str(e)}")
+
         input_infos = get_onnx_input_infos(model_path)
         output_infos = get_onnx_output_infos(model_path)
+
         for k, v in input_infos.items():
             v['shape'] = input_shapes[k]
+
         for k, v in output_infos.items():
             v['shape'] = output_shapes[k]
-        del sess
+
         return input_infos, output_infos
 
     def _setup_io_binding(self, input_infos, output_infos):
@@ -121,10 +132,12 @@ class ONNXEngineIOBinding:
         y_ortvalues = {}
         for k, v in input_infos.items():
             m = np.zeros(**v)
-            x_ortvalues[k] = ort.OrtValue.ortvalue_from_numpy(m, device_type='cuda', device_id=self.device_id)
+            x_ortvalues[k] = ort.OrtValue.ortvalue_from_numpy(
+                m, device_type='cuda', device_id=self.device_id)
         for k, v in output_infos.items():
             m = np.zeros(**v)
-            y_ortvalues[k] = ort.OrtValue.ortvalue_from_numpy(m, device_type='cuda', device_id=self.device_id)
+            y_ortvalues[k] = ort.OrtValue.ortvalue_from_numpy(
+                m, device_type='cuda', device_id=self.device_id)
 
         io_binding = self.sess.io_binding()
         for k, v in x_ortvalues.items():
@@ -144,12 +157,14 @@ class ONNXEngineIOBinding:
             for k, v in dict_data.items():
                 prefix = "  " * indent
                 if isinstance(v, dict):
-                    info += f"{prefix}{k}:\n" + format_nested_dict(v, indent + 1)
+                    info += f"{prefix}{k}:\n" + \
+                        format_nested_dict(v, indent + 1)
                 elif isinstance(v, str) and v.startswith('{') and v.endswith('}'):
                     try:
                         nested_dict = eval(v)
                         if isinstance(nested_dict, dict):
-                            info += f"{prefix}{k}:\n" + format_nested_dict(nested_dict, indent + 1)
+                            info += f"{prefix}{k}:\n" + \
+                                format_nested_dict(nested_dict, indent + 1)
                         else:
                             info += f"{prefix}{k}: {v}\n"
                     except:
@@ -175,5 +190,6 @@ class ONNXEngineIOBinding:
 
         divider = colored.stylize(
             f"+{'-' * divider_length}+", [colored.fg('blue'), colored.attr('bold')])
-        infos = f'\n\n{divider}\n|{" " * left_padding}{styled_title}{" " * right_padding}|\n{divider}\n\n{path}\n\n{input_info}\n{output_info}\n\n{metadata}\n\n{providers}\n\n{provider_options}\n{divider}'
+        infos = f'\n\n{divider}\n|{" " * left_padding}{styled_title}{" " * right_padding}|\n{divider}\n\n{
+            path}\n\n{input_info}\n{output_info}\n\n{metadata}\n\n{providers}\n\n{provider_options}\n{divider}'
         return infos
