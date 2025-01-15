@@ -1,4 +1,3 @@
-from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Union
 
@@ -6,23 +5,17 @@ import colored
 import numpy as np
 import onnxruntime as ort
 
-from ..enums import EnumCheckMixin
 from .metadata import get_onnx_metadata
 from .tools import get_onnx_input_infos, get_onnx_output_infos
 
 
-class Backend(EnumCheckMixin, Enum):
-    cpu = 0
-    cuda = 1
-
-
-class ONNXEngine:
+class ONNXEngineIOBinding:
 
     def __init__(
         self,
         model_path: Union[str, Path],
+        input_initializer: Dict[str, np.ndarray],
         gpu_id: int = 0,
-        backend: Union[str, int, Backend] = Backend.cpu,
         session_option: Dict[str, Any] = {},
         provider_option: Dict[str, Any] = {},
     ):
@@ -34,20 +27,21 @@ class ONNXEngine:
                 Filename or serialized ONNX or ORT format model in a byte string.
             gpu_id (int, optional):
                 GPU ID. Defaults to 0.
-            backend (Union[str, int, Backend], optional):
-                Backend. Defaults to Backend.cuda.
             session_option (Dict[str, Any], optional):
                 Session options. Defaults to {}.
             provider_option (Dict[str, Any], optional):
                 Provider options. Defaults to {}.
         """
-        # setting device info
-        backend = Backend.obj_to_enum(backend)
-        self.device_id = 0 if backend.name == 'cpu' else gpu_id
-
-        # setting provider options
-        providers, provider_options = self._get_provider_info(
-            backend, provider_option)
+        self.device_id = gpu_id
+        providers = ['CUDAExecutionProvider']
+        provider_options = [
+            {
+                'device_id': self.device_id,
+                'cudnn_conv_use_max_workspace': '1',
+                'enable_cuda_graph': '1',
+                **provider_option,
+            }
+        ]
 
         # setting session options
         sess_options = self._get_session_info(session_option)
@@ -68,14 +62,27 @@ class ONNXEngine:
         self.providers = self.sess.get_providers()
         self.provider_options = self.sess.get_provider_options()
 
-        self.input_infos = get_onnx_input_infos(model_path)
-        self.output_infos = get_onnx_output_infos(model_path)
+        input_infos, output_infos = self._init_io_infos(
+            model_path, input_initializer)
+
+        io_binding, x_ortvalues, y_ortvalues = self._setup_io_binding(
+            input_infos, output_infos)
+        self.io_binding = io_binding
+        self.x_ortvalues = x_ortvalues
+        self.y_ortvalues = y_ortvalues
+        self.input_infos = input_infos
+        self.output_infos = output_infos
+        # # Pass gpu_graph_id to RunOptions through RunConfigs
+        # ro = ort.RunOptions()
+        # # gpu_graph_id is optional if the session uses only one cuda graph
+        # ro.add_run_config_entry("gpu_graph_id", "1")
+        # self.run_option = ro
 
     def __call__(self, **xs) -> Dict[str, np.ndarray]:
-        output_names = list(self.output_infos.keys())
-        outs = self.sess.run(output_names, {k: v for k, v in xs.items()})
-        outs = {k: v for k, v in zip(output_names, outs)}
-        return outs
+        self._update_x_ortvalues(xs)
+        # self.sess.run_with_iobinding(self.io_binding, self.run_option)
+        self.sess.run_with_iobinding(self.io_binding)
+        return {k: v.numpy() for k, v in self.y_ortvalues.items()}
 
     def _get_session_info(
         self,
@@ -94,28 +101,47 @@ class ONNXEngine:
             setattr(sess_opt, k, v)
         return sess_opt
 
-    def _get_provider_info(
-        self,
-        backend: Union[str, int, Backend],
-        provider_option: Dict[str, Any] = {},
-    ) -> Backend:
-        """
-        Ref: https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#configuration-options
-        """
-        if backend == Backend.cuda:
-            providers = ['CUDAExecutionProvider']
-            provider_option = [{
-                'device_id': self.device_id,
-                'cudnn_conv_use_max_workspace': '1',
-                **provider_option,
-            }]
-        elif backend == Backend.cpu:
-            providers = ['CPUExecutionProvider']
-            # "CPUExecutionProvider" is different from everything else.
-            provider_option = None
-        else:
-            raise ValueError(f'backend={backend} is not supported.')
-        return providers, provider_option
+    def _init_io_infos(self, model_path, input_initializer: dict):
+        sess = ort.InferenceSession(
+            model_path,
+            providers=['CPUExecutionProvider'],
+        )
+        outs = sess.run(None, input_initializer)
+        input_shapes = {k: v.shape for k, v in input_initializer.items()}
+        output_shapes = {x.name: o.shape for x,
+                         o in zip(sess.get_outputs(), outs)}
+        input_infos = get_onnx_input_infos(model_path)
+        output_infos = get_onnx_output_infos(model_path)
+        for k, v in input_infos.items():
+            v['shape'] = input_shapes[k]
+        for k, v in output_infos.items():
+            v['shape'] = output_shapes[k]
+        del sess
+        return input_infos, output_infos
+
+    def _setup_io_binding(self, input_infos, output_infos):
+        x_ortvalues = {}
+        y_ortvalues = {}
+        for k, v in input_infos.items():
+            m = np.zeros(**v)
+            x_ortvalues[k] = ort.OrtValue.ortvalue_from_numpy(
+                m, device_type='cuda', device_id=self.device_id)
+        for k, v in output_infos.items():
+            m = np.zeros(**v)
+            y_ortvalues[k] = ort.OrtValue.ortvalue_from_numpy(
+                m, device_type='cuda', device_id=self.device_id)
+
+        io_binding = self.sess.io_binding()
+        for k, v in x_ortvalues.items():
+            io_binding.bind_ortvalue_input(k, v)
+        for k, v in y_ortvalues.items():
+            io_binding.bind_ortvalue_output(k, v)
+
+        return io_binding, x_ortvalues, y_ortvalues
+
+    def _update_x_ortvalues(self, xs: dict):
+        for k, v in self.x_ortvalues.items():
+            v.update_inplace(xs[k])
 
     def __repr__(self) -> str:
         import re
