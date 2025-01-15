@@ -102,28 +102,21 @@ class ONNXEngineIOBinding:
         return sess_opt
 
     def _init_io_infos(self, model_path, input_initializer: dict):
-
-        try:
-            with ort.InferenceSession(model_path, providers=['CPUExecutionProvider']) as cpu_sess:
-                outs = cpu_sess.run(None, input_initializer)
-                input_shapes = {k: v.shape for k,
-                                v in input_initializer.items()}
-                output_shapes = {
-                    x.name: o.shape
-                    for x, o in zip(cpu_sess.get_outputs(), outs)
-                }
-        except Exception as e:
-            raise RuntimeError(f"Failed to run CPU check session: {str(e)}")
-
+        sess = ort.InferenceSession(
+            model_path,
+            providers=['CPUExecutionProvider'],
+        )
+        outs = sess.run(None, input_initializer)
+        input_shapes = {k: v.shape for k, v in input_initializer.items()}
+        output_shapes = {x.name: o.shape for x,
+                         o in zip(sess.get_outputs(), outs)}
         input_infos = get_onnx_input_infos(model_path)
         output_infos = get_onnx_output_infos(model_path)
-
         for k, v in input_infos.items():
             v['shape'] = input_shapes[k]
-
         for k, v in output_infos.items():
             v['shape'] = output_shapes[k]
-
+        del sess
         return input_infos, output_infos
 
     def _setup_io_binding(self, input_infos, output_infos):
