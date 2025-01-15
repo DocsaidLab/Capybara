@@ -118,43 +118,68 @@ class ONNXEngine:
         return providers, provider_option
 
     def __repr__(self) -> str:
+        import re
+
+        def strip_ansi_codes(text):
+            """Remove ANSI escape codes from a string."""
+            ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+            return ansi_escape.sub('', text)
+
         def format_nested_dict(dict_data, indent=0):
-            info = ""
-            for k, v in dict_data.items():
-                prefix = "  " * indent
-                if isinstance(v, dict):
-                    info += f"{prefix}{k}:\n" + \
-                        format_nested_dict(v, indent + 1)
-                elif isinstance(v, str) and v.startswith('{') and v.endswith('}'):
+            """Recursively format nested dictionaries with indentation."""
+            info = []
+            prefix = "  " * indent
+            for key, value in dict_data.items():
+                if isinstance(value, dict):
+                    info.append(f"{prefix}{key}:")
+                    info.append(format_nested_dict(value, indent + 1))
+                elif isinstance(value, str) and value.startswith('{') and value.endswith('}'):
                     try:
-                        nested_dict = eval(v)
+                        nested_dict = eval(value)
                         if isinstance(nested_dict, dict):
-                            info += f"{prefix}{k}:\n" + \
-                                format_nested_dict(nested_dict, indent + 1)
+                            info.append(f"{prefix}{key}:")
+                            info.append(format_nested_dict(
+                                nested_dict, indent + 1))
                         else:
-                            info += f"{prefix}{k}: {v}\n"
-                    except:
-                        info += f"{prefix}{k}: {v}\n"
+                            info.append(f"{prefix}{key}: {value}")
+                    except Exception:
+                        info.append(f"{prefix}{key}: {value}")
                 else:
-                    info += f"{prefix}{k}: {v}\n"
-            return info
+                    info.append(f"{prefix}{key}: {value}")
+            return "\n".join(info)
 
         title = 'DOCSAID X ONNXRUNTIME'
+        divider_length = 50
+        divider = f"+{'-' * divider_length}+"
         styled_title = colored.stylize(
             title, [colored.fg('blue'), colored.attr('bold')])
-        divider_length = 50
-        title_length = len(title)
-        left_padding = (divider_length - title_length) // 2
-        right_padding = divider_length - title_length - left_padding
 
-        path = f'Model Path: {self.model_path}'
+        def center_text(text, width):
+            """Center text within a fixed width, handling ANSI escape codes."""
+            plain_text = strip_ansi_codes(text)
+            text_length = len(plain_text)
+            left_padding = (width - text_length) // 2
+            right_padding = width - text_length - left_padding
+            return f"|{' ' * left_padding}{text}{' ' * right_padding}|"
+
+        path = f"Model Path: {self.model_path}"
         input_info = format_nested_dict(self.input_infos)
         output_info = format_nested_dict(self.output_infos)
         metadata = format_nested_dict(self.metadata)
-        providers = f'Provider: {", ".join(self.providers)}'
+        providers = f"Provider: {', '.join(self.providers)}"
         provider_options = format_nested_dict(self.provider_options)
 
-        divider = colored.stylize(
-            f"+{'-' * divider_length}+", [colored.fg('blue'), colored.attr('bold')])
-        infos = f'\n\n{divider}\n|{" " * left_padding}{styled_title}{" " * right_padding}|\n{divider}\n\n{path}\n\n{input_info}\n{output_info}\n\n{metadata}\n\n{providers}\n\n{provider_options}\n{divider}'
-        return infos
+        sections = [
+            divider,
+            center_text(styled_title, divider_length),
+            divider,
+            path,
+            input_info,
+            output_info,
+            metadata,
+            providers,
+            provider_options,
+            divider,
+        ]
+
+        return "\n\n".join(sections)
