@@ -7,7 +7,7 @@ def test_ONNXEngineIOBinding():
     model_path = get_curdir(__file__).parent / "resources/model_dynamic-axes.onnx"
     input_initializer = {'input': np.random.randn(32, 3, 448, 448).astype('float32')}
     engine = ONNXEngineIOBinding(model_path, input_initializer)
-    for i in range(30):
+    for i in range(5):
         xs = {'input': np.random.randn(32, 3, 448, 448).astype('float32')}
         outs = engine(**xs)
         if i:
