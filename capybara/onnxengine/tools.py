@@ -1,8 +1,10 @@
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 import onnx
-from onnx.helper import tensor_dtype_to_np_dtype
+import onnxsim
+from onnx.helper import (make_graph, make_model, make_opsetid,
+                         tensor_dtype_to_np_dtype)
 
 __all__ = [
     'get_onnx_input_infos',
@@ -32,3 +34,46 @@ def get_onnx_output_infos(model: Union[str, Path, onnx.ModelProto]) -> Dict[str,
         }
         for x in model.graph.output
     }
+
+
+def make_onnx_dynamic_axes(
+    model_fpath: Union[str, Path],
+    output_fpath: Union[str, Path],
+    input_dims: Dict[str, Dict[int, str]],
+    output_dims: Dict[str, Dict[int, str]],
+    opset_version: Optional[int] = None,
+) -> None:
+    onnx_model = onnx.load(model_fpath)
+
+    new_graph = make_graph(
+        nodes=onnx_model.graph.node,
+        name=onnx_model.graph.name,
+        inputs=onnx_model.graph.input,
+        outputs=onnx_model.graph.output,
+        initializer=onnx_model.graph.initializer,
+        value_info=None,
+    )
+
+    if not any(opset.domain == '' for opset in onnx_model.opset_import):
+        onnx_model.opset_import.append(make_opsetid(domain="", version=opset_version))
+
+    new_model = make_model(new_graph, opset_imports=onnx_model.opset_import)
+
+    for x in new_model.graph.input:
+        for name, v in input_dims.items():
+            if x.name == name:
+                for k, d in v.items():
+                    x.type.tensor_type.shape.dim[k].dim_param = d
+
+    for x in new_model.graph.output:
+        for name, v in output_dims.items():
+            if x.name == name:
+                for k, d in v.items():
+                    x.type.tensor_type.shape.dim[k].dim_param = d
+
+    for x in new_model.graph.node:
+        if x.op_type == 'Reshape':
+            raise ValueError("Reshape cannot be trasformed to dynamic axes")
+
+    new_model, _ = onnxsim.simplify(new_model)
+    onnx.save(new_model, output_fpath)
