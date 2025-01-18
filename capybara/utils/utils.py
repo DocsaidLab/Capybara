@@ -1,3 +1,4 @@
+from tqdm import tqdm
 import os
 from pprint import pprint
 from typing import Any, Generator, Iterable, List, Union
@@ -119,12 +120,20 @@ def download_from_google(file_id: str, file_name: str, target: str = "."):
     os.makedirs(target, exist_ok=True)
     file_path = os.path.join(target, file_name)
 
-    # Step 3: Save the file to the specified directory
+    # Step 3: Save the file to the specified directory with a progress bar
     try:
-        with open(file_path, "wb") as file:
+        total_size = int(response.headers.get('content-length', 0))
+        with open(file_path, "wb") as file, tqdm(
+            desc=file_name,
+            total=total_size,
+            unit="B",
+            unit_scale=True,
+            unit_divisor=1024,
+        ) as progress_bar:
             for chunk in response.iter_content(chunk_size=32768):
                 if chunk:  # Avoid writing empty chunks
                     file.write(chunk)
+                    progress_bar.update(len(chunk))
         print(f"File successfully downloaded to: {file_path}")
     except Exception as e:
         raise Exception(f"File download failed: {e}")
