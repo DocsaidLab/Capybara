@@ -10,7 +10,6 @@ from .tools import get_onnx_input_infos, get_onnx_output_infos
 
 
 class ONNXEngineIOBinding:
-
     def __init__(
         self,
         model_path: Union[str, Path],
@@ -33,12 +32,12 @@ class ONNXEngineIOBinding:
                 Provider options. Defaults to {}.
         """
         self.device_id = gpu_id
-        providers = ['CUDAExecutionProvider']
+        providers = ["CUDAExecutionProvider"]
         provider_options = [
             {
-                'device_id': self.device_id,
-                'cudnn_conv_use_max_workspace': '1',
-                'enable_cuda_graph': '1',
+                "device_id": self.device_id,
+                "cudnn_conv_use_max_workspace": "1",
+                "enable_cuda_graph": "1",
                 **provider_option,
             }
         ]
@@ -47,8 +46,7 @@ class ONNXEngineIOBinding:
         sess_options = self._get_session_info(session_option)
 
         # setting onnxruntime session
-        model_path = str(model_path) if isinstance(
-            model_path, Path) else model_path
+        model_path = str(model_path) if isinstance(model_path, Path) else model_path
         self.sess = ort.InferenceSession(
             model_path,
             sess_options=sess_options,
@@ -62,11 +60,11 @@ class ONNXEngineIOBinding:
         self.providers = self.sess.get_providers()
         self.provider_options = self.sess.get_provider_options()
 
-        input_infos, output_infos = self._init_io_infos(
-            model_path, input_initializer)
+        input_infos, output_infos = self._init_io_infos(model_path, input_initializer)
 
         io_binding, x_ortvalues, y_ortvalues = self._setup_io_binding(
-            input_infos, output_infos)
+            input_infos, output_infos
+        )
         self.io_binding = io_binding
         self.x_ortvalues = x_ortvalues
         self.y_ortvalues = y_ortvalues
@@ -93,8 +91,8 @@ class ONNXEngineIOBinding:
         """
         sess_opt = ort.SessionOptions()
         session_option_default = {
-            'graph_optimization_level': ort.GraphOptimizationLevel.ORT_ENABLE_ALL,
-            'log_severity_level': 2,
+            "graph_optimization_level": ort.GraphOptimizationLevel.ORT_ENABLE_ALL,
+            "log_severity_level": 2,
         }
         session_option_default.update(session_option)
         for k, v in session_option_default.items():
@@ -104,18 +102,17 @@ class ONNXEngineIOBinding:
     def _init_io_infos(self, model_path, input_initializer: dict):
         sess = ort.InferenceSession(
             model_path,
-            providers=['CPUExecutionProvider'],
+            providers=["CPUExecutionProvider"],
         )
         outs = sess.run(None, input_initializer)
         input_shapes = {k: v.shape for k, v in input_initializer.items()}
-        output_shapes = {x.name: o.shape for x,
-                         o in zip(sess.get_outputs(), outs)}
+        output_shapes = {x.name: o.shape for x, o in zip(sess.get_outputs(), outs)}
         input_infos = get_onnx_input_infos(model_path)
         output_infos = get_onnx_output_infos(model_path)
         for k, v in input_infos.items():
-            v['shape'] = input_shapes[k]
+            v["shape"] = input_shapes[k]
         for k, v in output_infos.items():
-            v['shape'] = output_shapes[k]
+            v["shape"] = output_shapes[k]
         del sess
         return input_infos, output_infos
 
@@ -125,11 +122,13 @@ class ONNXEngineIOBinding:
         for k, v in input_infos.items():
             m = np.zeros(**v)
             x_ortvalues[k] = ort.OrtValue.ortvalue_from_numpy(
-                m, device_type='cuda', device_id=self.device_id)
+                m, device_type="cuda", device_id=self.device_id
+            )
         for k, v in output_infos.items():
             m = np.zeros(**v)
             y_ortvalues[k] = ort.OrtValue.ortvalue_from_numpy(
-                m, device_type='cuda', device_id=self.device_id)
+                m, device_type="cuda", device_id=self.device_id
+            )
 
         io_binding = self.sess.io_binding()
         for k, v in x_ortvalues.items():
@@ -148,8 +147,8 @@ class ONNXEngineIOBinding:
 
         def strip_ansi_codes(text):
             """Remove ANSI escape codes from a string."""
-            ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-            return ansi_escape.sub('', text)
+            ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+            return ansi_escape.sub("", text)
 
         def format_nested_dict(dict_data, indent=0):
             """Recursively format nested dictionaries with indentation."""
@@ -159,13 +158,16 @@ class ONNXEngineIOBinding:
                 if isinstance(value, dict):
                     info.append(f"{prefix}{key}:")
                     info.append(format_nested_dict(value, indent + 1))
-                elif isinstance(value, str) and value.startswith('{') and value.endswith('}'):
+                elif (
+                    isinstance(value, str)
+                    and value.startswith("{")
+                    and value.endswith("}")
+                ):
                     try:
                         nested_dict = eval(value)
                         if isinstance(nested_dict, dict):
                             info.append(f"{prefix}{key}:")
-                            info.append(format_nested_dict(
-                                nested_dict, indent + 1))
+                            info.append(format_nested_dict(nested_dict, indent + 1))
                         else:
                             info.append(f"{prefix}{key}: {value}")
                     except Exception:
@@ -174,11 +176,12 @@ class ONNXEngineIOBinding:
                     info.append(f"{prefix}{key}: {value}")
             return "\n".join(info)
 
-        title = 'DOCSAID X ONNXRUNTIME'
+        title = "DOCSAID X ONNXRUNTIME"
         divider_length = 50
         divider = f"+{'-' * divider_length}+"
         styled_title = colored.stylize(
-            title, [colored.fg('blue'), colored.attr('bold')])
+            title, [colored.fg("blue"), colored.attr("bold")]
+        )
 
         def center_text(text, width):
             """Center text within a fixed width, handling ANSI escape codes."""
@@ -191,7 +194,7 @@ class ONNXEngineIOBinding:
         path = f"Model Path: {self.model_path}"
         input_info = format_nested_dict(self.input_infos)
         output_info = format_nested_dict(self.output_infos)
-        metadata = format_nested_dict(self.metadata)
+        metadata = format_nested_dict({"metadata": self.metadata})
         providers = f"Provider: {', '.join(self.providers)}"
         provider_options = format_nested_dict(self.provider_options)
 
