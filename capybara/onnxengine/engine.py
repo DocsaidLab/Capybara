@@ -168,7 +168,7 @@ class ONNXEngine:
         path = f"Model Path: {self.model_path}"
         input_info = format_nested_dict(self.input_infos)
         output_info = format_nested_dict(self.output_infos)
-        metadata = format_nested_dict(self.metadata)
+        metadata = format_nested_dict({"metadata": self.metadata})
         providers = f"Provider: {', '.join(self.providers)}"
         provider_options = format_nested_dict(self.provider_options)
 
