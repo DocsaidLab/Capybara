@@ -1,9 +1,11 @@
-from tqdm import tqdm
 import os
+import re
 from pprint import pprint
 from typing import Any, Generator, Iterable, List, Union
 
 import requests
+from bs4 import BeautifulSoup
+from tqdm import tqdm
 
 from ..enums import COLORSTR, FORMATSTR
 
@@ -101,39 +103,81 @@ def download_from_google(file_id: str, file_name: str, target: str = "."):
                 target="./downloads"
             )
     """
-    base_url = "https://drive.google.com/uc?export=download"
+    # 第一次嘗試：docs.google.com/uc?export=download&id=檔案ID
+    base_url = "https://docs.google.com/uc"
     session = requests.Session()
+    params = {
+        "export": "download",
+        "id": file_id
+    }
+    response = session.get(base_url, params=params, stream=True)
 
-    # Step 1: Attempt to download the file
-    response = session.get(base_url, params={"id": file_id}, stream=True)
-
-    # Step 2: Check if confirmation is required (e.g., for large files)
+    # 如果已經出現 Content-Disposition，代表直接拿到檔案
     if "content-disposition" not in response.headers:
-        for key, value in response.cookies.items():
-            if key.startswith("download_warning"):
-                # Retry with confirmation token
-                response = session.get(
-                    base_url, params={"id": file_id, "confirm": value}, stream=True)
+        # 先嘗試從 cookies 拿 token
+        token = None
+        for k, v in response.cookies.items():
+            if k.startswith("download_warning"):
+                token = v
                 break
 
-    # Ensure the target directory exists
+        # 如果 cookies 沒有，就從 HTML 解析
+        if not token:
+            soup = BeautifulSoup(response.text, "html.parser")
+            # 常見情況：HTML 裡面有一個 form#download-form
+            download_form = soup.find("form", {"id": "download-form"})
+            if download_form and download_form.get("action"):
+                # 將 action 裡的網址抓出來，可能是 drive.usercontent.google.com/download
+                download_url = download_form["action"]
+                # 收集所有 hidden 欄位
+                hidden_inputs = download_form.find_all(
+                    "input", {"type": "hidden"})
+                form_params = {}
+                for inp in hidden_inputs:
+                    if inp.get("name") and inp.get("value") is not None:
+                        form_params[inp["name"]] = inp["value"]
+
+                # 用這些參數去重新 GET
+                # 注意：原本 action 可能只是相對路徑，這裡直接用完整網址
+                response = session.get(
+                    download_url, params=form_params, stream=True)
+            else:
+                # 或者有些情況是直接在 HTML 裡 search confirm=xxx
+                match = re.search(r'confirm=([0-9A-Za-z-_]+)', response.text)
+                if match:
+                    token = match.group(1)
+                    # 帶上 confirm token 再重新請求 docs.google.com
+                    params["confirm"] = token
+                    response = session.get(
+                        base_url, params=params, stream=True)
+                else:
+                    raise Exception("無法在回應中找到下載連結或確認參數，下載失敗。")
+
+        else:
+            # 直接帶上 cookies 抓到的 token 再打一次
+            params["confirm"] = token
+            response = session.get(base_url, params=params, stream=True)
+
+    # 確保下載目錄存在
     os.makedirs(target, exist_ok=True)
     file_path = os.path.join(target, file_name)
 
-    # Step 3: Save the file to the specified directory with a progress bar
+    # 開始把檔案 chunk 寫到本地，附帶進度條
     try:
         total_size = int(response.headers.get('content-length', 0))
-        with open(file_path, "wb") as file, tqdm(
+        with open(file_path, "wb") as f, tqdm(
             desc=file_name,
             total=total_size,
             unit="B",
             unit_scale=True,
             unit_divisor=1024,
-        ) as progress_bar:
+        ) as bar:
             for chunk in response.iter_content(chunk_size=32768):
-                if chunk:  # Avoid writing empty chunks
-                    file.write(chunk)
-                    progress_bar.update(len(chunk))
+                if chunk:
+                    f.write(chunk)
+                    bar.update(len(chunk))
+
         print(f"File successfully downloaded to: {file_path}")
+
     except Exception as e:
         raise Exception(f"File download failed: {e}")
