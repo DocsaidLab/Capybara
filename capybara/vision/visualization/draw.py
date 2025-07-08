@@ -1,3 +1,5 @@
+import colorsys
+import hashlib
 from pathlib import Path
 from typing import List, Tuple, Union
 
@@ -23,12 +25,15 @@ from .utils import (_Color, _Colors, _Point, _Points, _Scale, _Scales,
 __all__ = [
     'draw_box', 'draw_boxes', 'draw_polygon', 'draw_polygons', 'draw_text',
     'generate_colors', 'draw_mask', 'draw_point', 'draw_points', 'draw_keypoints',
-    'draw_keypoints_list',
+    'draw_keypoints_list', 'draw_detection',
 ]
 
 DIR = get_curdir(__file__)
 
-if not (font_path := DIR / "NotoSansMonoCJKtc-VF.ttf").exists():
+DEFAULT_FONT_PATH = DIR / "NotoSansMonoCJKtc-VF.ttf"
+
+
+if not (font_path := DIR / DEFAULT_FONT_PATH).exists():
     file_id = "1m6jvsBGKgQsxzpIoe4iEp_EqFxYXe7T1"
     download_from_google(file_id, font_path.name, DIR)
 
@@ -233,7 +238,7 @@ def draw_text(
     img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 
     draw = ImageDraw.Draw(img)
-    font_path = DIR / "NotoSansMonoCJKtc-VF.ttf" if font_path is None else font_path
+    font_path = DEFAULT_FONT_PATH if font_path is None else font_path
     font = ImageFont.truetype(str(font_path), size=text_size)
 
     _, top, _, bottom = font.getbbox(text)
@@ -561,3 +566,119 @@ def draw_mask(
     img_mask = cv2.addWeighted(img, weight[0], mask, weight[1], gamma)
 
     return img_mask
+
+
+def draw_detection(
+    img: np.ndarray,
+    box: _Box,
+    label: str,
+    score: Union[float, None] = None,
+    color: _Color | None = None,
+    thickness: _Thickness | None = None,
+    text_color: _Color = (255, 255, 255),
+    font_path: Union[str, Path] | None = None,
+    text_size: int | None = None,
+    box_alpha: float = 1.0,
+    text_bg_alpha: float = 0.6,
+) -> np.ndarray:
+    """
+    Draw a detection box with label (and optional confidence) onto an image,
+    ensuring all coordinates are valid and text background rect is sorted.
+
+    Args:
+        img: OpenCV BGR image.
+        box: Bounding box, absolute or normalized.
+        label: Class name.
+        score: Confidence in [0,1]; if provided, appended to label.
+        color: BGR color for box; if None, auto choose by hashing label.
+        thickness: Line thickness; if None, auto choose by image size.
+        text_color: BGR text color.
+        font_path: Path to TTF font.
+        text_size: Font size in points; if None, ~10% of box height (min 12).
+        box_alpha: Box opacity (1 = solid).
+        text_bg_alpha: Background opacity for text.
+
+    Returns:
+        Annotated BGR image.
+    """
+    # 1. Prepare canvas and box
+    canvas = prepare_img(img).copy()
+    box_obj = prepare_box(box)
+    if box_obj.is_normalized:
+        h_img, w_img = canvas.shape[:2]
+        box_obj = box_obj.denormalize(w_img, h_img)
+    x1, y1, x2, y2 = box_obj.numpy().astype(int).tolist()
+
+    # 2. Choose box color and thickness
+    if color is None:
+        # derive a distinct hue via golden ratio
+        try:
+            idx = int(label)
+        except ValueError:
+            idx = int(hashlib.sha1(label.encode()).hexdigest()[:8], 16)
+        hue = (idx * 0.618033988749895) % 1.0
+        r, g, b = colorsys.hsv_to_rgb(hue, 0.65, 1.0)
+        draw_color = (int(b*255), int(g*255), int(r*255))
+    else:
+        draw_color = color
+
+    if thickness is None:
+        # proportional to image diagonal
+        diag = (canvas.shape[0]**2 + canvas.shape[1]**2)**0.5
+        line_thickness = max(1, int(diag * 0.002 + 0.5))
+    else:
+        line_thickness = thickness
+
+    # 3. Draw box (with optional transparency)
+    if box_alpha >= 1.0:
+        cv2.rectangle(canvas, (x1, y1), (x2, y2),
+                      draw_color, line_thickness, cv2.LINE_AA)
+    else:
+        overlay = canvas.copy()
+        cv2.rectangle(overlay, (x1, y1), (x2, y2),
+                      draw_color, line_thickness, cv2.LINE_AA)
+        canvas = cv2.addWeighted(overlay, box_alpha, canvas, 1 - box_alpha, 0)
+
+    # 4. Prepare label text
+    text = f"{label} {score*100:.1f}%" if score is not None else label
+
+    # auto font size (~10% of box height, min 12)
+    if text_size is None:
+        text_size = max(12, int((y2 - y1) * 0.10))
+
+    # 5. Measure text size with PIL
+    font_file = DEFAULT_FONT_PATH if font_path is None else Path(font_path)
+    pil_img = Image.fromarray(cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB))
+    draw = ImageDraw.Draw(pil_img, "RGBA")
+    font = ImageFont.truetype(str(font_file), size=text_size)
+    bbox = draw.textbbox((0, 0), text, font=font)
+    text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+    # 6. Compute and clamp background rectangle coords
+    pad = max(1, line_thickness // 2)
+    raw_x0, raw_y0 = x1, y1 - text_h - 2 * pad
+    raw_x1, raw_y1 = x1 + text_w + 2 * pad, y1
+
+    h_img, w_img = canvas.shape[:2]
+    bg_x0 = max(0, raw_x0)
+    bg_y0 = max(0, raw_y0)
+    bg_x1 = min(w_img, raw_x1)
+    bg_y1 = min(h_img, raw_y1)
+
+    # ensure sorted: (x0,y0) is top-left, (x1,y1) bottom-right
+    x0, x1_ = sorted([bg_x0, bg_x1])
+    y0, y1_ = sorted([bg_y0, bg_y1])
+
+    # 7. Draw semi-transparent background
+    draw.rectangle(
+        [(x0, y0), (x1_, y1_)],
+        fill=(*draw_color[::-1], int(text_bg_alpha * 255)),
+    )
+
+    # 8. Draw text (PIL expecting RGB)
+    draw.text((x0 + pad, y0 + pad), text,
+              font=font, fill=text_color[::-1])
+
+    # 9. Convert back to BGR OpenCV
+    annotated = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+    return annotated
