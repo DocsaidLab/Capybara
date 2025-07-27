@@ -25,7 +25,7 @@ from .utils import (_Color, _Colors, _Point, _Points, _Scale, _Scales,
 __all__ = [
     'draw_box', 'draw_boxes', 'draw_polygon', 'draw_polygons', 'draw_text',
     'generate_colors', 'draw_mask', 'draw_point', 'draw_points', 'draw_keypoints',
-    'draw_keypoints_list', 'draw_detection',
+    'draw_keypoints_list', 'draw_detection', 'draw_detections',
 ]
 
 DIR = get_curdir(__file__)
@@ -682,3 +682,86 @@ def draw_detection(
     # 9. Convert back to BGR OpenCV
     annotated = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
     return annotated
+
+
+def draw_detections(
+    img: np.ndarray,
+    boxes: _Boxes,
+    labels: List[str],
+    scores: List[float] = None,
+    colors: _Colors = None,
+    thicknesses: _Thicknesses = None,
+    text_colors: _Colors = (255, 255, 255),
+    font_path: Union[str, Path] = None,
+    text_sizes: List[int] = None,
+    box_alpha: float = 1.0,
+    text_bg_alpha: float = 0.6,
+) -> np.ndarray:
+    """
+    Draw multiple detection boxes with labels onto an image.
+
+    Args:
+        img (np.ndarray): OpenCV BGR image.
+        boxes (_Boxes): List of bounding boxes.
+        labels (List[str]): Class names for each box.
+        scores (List[float], optional): Confidence scores for each box.
+        colors (_Colors, optional): BGR colors for each box.
+        thicknesses (_Thicknesses, optional): Line thicknesses for each box.
+        text_colors (_Colors, optional): BGR text colors.
+        font_path (Union[str, Path], optional): Path to TTF font.
+        text_sizes (List[int], optional): Font sizes in points for each label.
+        box_alpha (float, optional): Box opacity (1 = solid).
+        text_bg_alpha (float, optional): Background opacity for text.
+
+    Returns:
+        np.ndarray: Annotated BGR image.
+    """
+    canvas = prepare_img(img).copy()
+    boxes = prepare_boxes(boxes)
+
+    if len(boxes) != len(labels):
+        raise ValueError("Number of boxes must match number of labels")
+
+    if scores is not None and len(scores) != len(labels):
+        raise ValueError("Number of scores must match number of labels")
+
+    if colors is not None:
+        colors = prepare_colors(colors, len(boxes))
+    else:
+        colors = [None] * len(boxes)
+
+    if thicknesses is not None:
+        thicknesses = prepare_thicknesses(thicknesses, len(boxes))
+    else:
+        thicknesses = [None] * len(boxes)
+
+    if text_colors is not None:
+        text_colors = prepare_colors(text_colors, len(boxes))
+
+    if text_sizes is not None:
+        text_sizes = [int(size) for size in text_sizes]
+
+    for i, box in enumerate(boxes):
+        label = labels[i]
+        score = scores[i] if scores is not None else None
+        color = colors[i] if colors is not None else None
+        thickness = thicknesses[i] if thicknesses is not None else None
+        text_color = text_colors[i] if text_colors is not None else (
+            255, 255, 255)
+        text_size = text_sizes[i] if text_sizes is not None else None
+
+        canvas = draw_detection(
+            canvas,
+            box,
+            str(label),
+            score=score,
+            color=color,
+            thickness=thickness,
+            text_color=text_color,
+            font_path=font_path,
+            text_size=text_size,
+            box_alpha=box_alpha,
+            text_bg_alpha=text_bg_alpha
+        )
+
+    return canvas
