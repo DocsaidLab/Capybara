@@ -1,4 +1,5 @@
 import colorsys
+import functools
 import hashlib
 from pathlib import Path
 from typing import List, Tuple, Union
@@ -568,6 +569,42 @@ def draw_mask(
     return img_mask
 
 
+def _vdc(n: int, base: int = 2) -> float:
+    """Return n-th Van der Corput radical inverse in given base."""
+    vdc, denom = 0.0, 1.0
+    while n:
+        n, rem = divmod(n, base)
+        denom *= base
+        vdc += rem / denom
+    return vdc
+
+
+@functools.lru_cache(maxsize=None)
+def distinct_color(idx: int) -> _Color:
+    """Generate a perceptually distinct BGR color for class *idx*.
+
+    1. Hue:
+        use VDC sequence (0, 0.5, 0.25, 0.75, …) to maximize separation
+        between close indices.
+    2. Saturation / Value: cycle every 20 / 10 ids to avoid hue-only clashes.
+    """
+    hue = _vdc(idx + 1)                       # (0,1)   ─ 長距離跳耀
+    sat_cycle = (0.65, 0.80, 0.50)  # ┐週期性變化
+    val_cycle = (1.00, 0.90, 0.80)  # ┘增亮／加深
+    s = sat_cycle[(idx // 20) % len(sat_cycle)]
+    v = val_cycle[(idx // 10) % len(val_cycle)]
+    r, g, b = colorsys.hsv_to_rgb(hue, s, v)
+    return int(b * 255), int(g * 255), int(r * 255)
+
+
+def _label_to_index(label: str) -> int:
+    """Convert arbitrary label to stable int id."""
+    try:
+        return int(label)
+    except ValueError:
+        return int(hashlib.sha1(label.encode()).hexdigest()[:8], 16)
+
+
 def draw_detection(
     img: np.ndarray,
     box: _Box,
@@ -611,14 +648,8 @@ def draw_detection(
 
     # 2. Choose box color and thickness
     if color is None:
-        # derive a distinct hue via golden ratio
-        try:
-            idx = int(label)
-        except ValueError:
-            idx = int(hashlib.sha1(label.encode()).hexdigest()[:8], 16)
-        hue = (idx * 0.618033988749895) % 1.0
-        r, g, b = colorsys.hsv_to_rgb(hue, 0.65, 1.0)
-        draw_color = (int(b*255), int(g*255), int(r*255))
+        idx = _label_to_index(label)
+        draw_color = distinct_color(idx)
     else:
         draw_color = color
 
