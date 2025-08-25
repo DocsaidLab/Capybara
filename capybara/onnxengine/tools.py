@@ -8,6 +8,7 @@ from onnx.helper import make_graph, make_model, make_opsetid, tensor_dtype_to_np
 __all__ = [
     "get_onnx_input_infos",
     "get_onnx_output_infos",
+    "make_onnx_dynamic_axes",
 ]
 
 

@@ -14,6 +14,7 @@ from .tools import get_onnx_input_infos, get_onnx_output_infos
 class Backend(EnumCheckMixin, Enum):
     cpu = 0
     cuda = 1
+    coreml = 2
 
 
 class ONNXEngine:
@@ -45,19 +46,14 @@ class ONNXEngine:
         self.device_id = 0 if backend.name == "cpu" else gpu_id
 
         # setting provider options
-        providers, provider_options = self._get_provider_info(backend, provider_option)
+        providers = self._get_providers(backend, provider_option)
 
         # setting session options
         sess_options = self._get_session_info(session_option)
 
         # setting onnxruntime session
         model_path = str(model_path) if isinstance(model_path, Path) else model_path
-        self.sess = ort.InferenceSession(
-            model_path,
-            sess_options=sess_options,
-            providers=providers,
-            provider_options=provider_options,
-        )
+        self.sess = ort.InferenceSession(model_path, sess_options=sess_options, providers=providers)
 
         # setting onnxruntime session info
         self.model_path = model_path
@@ -74,10 +70,7 @@ class ONNXEngine:
         outs = {k: v for k, v in zip(output_names, outs)}
         return outs
 
-    def _get_session_info(
-        self,
-        session_option: Dict[str, Any] = {},
-    ) -> ort.SessionOptions:
+    def _get_session_info(self, session_option: Dict[str, Any] = {}) -> ort.SessionOptions:
         """
         Ref: https://onnxruntime.ai/docs/api/python/api_summary.html#sessionoptions
         """
@@ -91,30 +84,40 @@ class ONNXEngine:
             setattr(sess_opt, k, v)
         return sess_opt
 
-    def _get_provider_info(
-        self,
-        backend: Union[str, int, Backend],
-        provider_option: Dict[str, Any] = {},
-    ) -> Backend:
+    def _get_providers(self, backend: Union[str, int, Backend], provider_option: Dict[str, Any] = {}) -> Backend:
         """
         Ref: https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#configuration-options
         """
         if backend == Backend.cuda:
-            providers = ["CUDAExecutionProvider"]
-            provider_option = [
-                {
-                    "device_id": self.device_id,
-                    "cudnn_conv_use_max_workspace": "1",
-                    **provider_option,
-                }
+            providers = [
+                (
+                    "CUDAExecutionProvider",
+                    {
+                        "device_id": self.device_id,
+                        "cudnn_conv_use_max_workspace": "1",
+                        **provider_option,
+                    },
+                )
+            ]
+        elif backend == Backend.coreml:
+            providers = [
+                (
+                    "CoreMLExecutionProvider",
+                    {
+                        "ModelFormat": "MLProgram",
+                        "MLComputeUnits": "ALL",
+                        "RequireStaticInputShapes": "1",
+                        **provider_option,
+                    },
+                )
             ]
         elif backend == Backend.cpu:
-            providers = ["CPUExecutionProvider"]
+            providers = [("CPUExecutionProvider", {})]
             # "CPUExecutionProvider" is different from everything else.
-            provider_option = None
+            # provider_option = None
         else:
             raise ValueError(f"backend={backend} is not supported.")
-        return providers, provider_option
+        return providers
 
     def __repr__(self) -> str:
         import re
@@ -132,11 +135,7 @@ class ONNXEngine:
                 if isinstance(value, dict):
                     info.append(f"{prefix}{key}:")
                     info.append(format_nested_dict(value, indent + 1))
-                elif (
-                    isinstance(value, str)
-                    and value.startswith("{")
-                    and value.endswith("}")
-                ):
+                elif isinstance(value, str) and value.startswith("{") and value.endswith("}"):
                     try:
                         nested_dict = eval(value)
                         if isinstance(nested_dict, dict):
@@ -153,9 +152,7 @@ class ONNXEngine:
         title = "DOCSAID X ONNXRUNTIME"
         divider_length = 50
         divider = f"+{'-' * divider_length}+"
-        styled_title = colored.stylize(
-            title, [colored.fg("blue"), colored.attr("bold")]
-        )
+        styled_title = colored.stylize(title, [colored.fg("blue"), colored.attr("bold")])
 
         def center_text(text, width):
             """Center text within a fixed width, handling ANSI escape codes."""
