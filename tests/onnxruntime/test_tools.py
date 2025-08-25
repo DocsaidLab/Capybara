@@ -1,7 +1,7 @@
 import numpy as np
 
 from capybara import (
-    ONNXEngineIOBinding,
+    ONNXEngine,
     get_onnx_input_infos,
     get_onnx_output_infos,
     make_onnx_dynamic_axes,
@@ -34,8 +34,6 @@ def test_make_onnx_dynamic_axes():
         output_dims=output_dims,
     )
     xs = {"input": np.random.randn(32, 3, 320, 320).astype("float32")}
-    engine = ONNXEngineIOBinding(
-        new_model_path, input_initializer=xs, session_option={"log_severity_level": 1}
-    )
+    engine = ONNXEngine(new_model_path, session_option={"log_severity_level": 1}, backend="cpu")
     outs = engine(**xs)
     assert outs["output"].shape == (32, 64, 80, 80)
