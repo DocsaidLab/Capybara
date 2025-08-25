@@ -78,7 +78,7 @@ brew install jpeg-turbo exiftool ffmpeg libheif poppler
 ### PyPI
 
 ```bash
-pip install capybara_docsaid
+pip install capybara-docsaid
 ```
 
 ### Git
