@@ -87,7 +87,7 @@ pip install capybara_docsaid
 pip install git+https://github.com/DocsaidLab/Capybara.git
 ```
 
-## Docker
+## Docker for Deployment
 
 We provide a Docker script for convenient deployment, ensuring a consistent environment. Below are the steps to build the image with Capybara installed.
 
@@ -104,13 +104,15 @@ We provide a Docker script for convenient deployment, ensuring a consistent envi
    bash docker/build.bash
    ```
 
-   This will build an image using the [**Dockerfile**](docker/Dockerfile) in the project. The image is based on `nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04` by default, providing the CUDA environment required for ONNXRuntime inference.
+   This will build an image using the [**Dockerfile**](docker/Dockerfile) in the project. The image is based on `nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04` by default, providing the CUDA environment required for ONNXRuntime inference.
 
 3. After the build is complete, mount the working directory and run the program:
 
    ```bash
    docker run --gpus all -it --rm capybara_docsaid:latest bash
    ```
+
+**PS: If you want to compile cuda or cudnn for developing, please change the base image to `nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04`.**
 
 ### gosu Permissions Issues
 

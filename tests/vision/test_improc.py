@@ -23,7 +23,7 @@ def test_imread():
     assert len(img_gray.shape) == 2  # 灰階圖片的channel數為1
 
     # 測試heif格式的圖片讀取
-    img_heif = imread(DIR.parent / "resources" / "lena.heif", color_base="BGR")
+    img_heif = imread(DIR.parent / "resources" / "lena.heic", color_base="BGR")
     assert isinstance(img_heif, np.ndarray)
     assert img_heif.shape[-1] == 3  # BGR圖片的channel數為3
 
