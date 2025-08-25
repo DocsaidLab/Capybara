@@ -34,8 +34,6 @@ def test_make_onnx_dynamic_axes():
         output_dims=output_dims,
     )
     xs = {"input": np.random.randn(32, 3, 320, 320).astype("float32")}
-    engine = ONNXEngineIOBinding(
-        new_model_path, input_initializer=xs, session_option={"log_severity_level": 1}
-    )
+    engine = ONNXEngineIOBinding(new_model_path, input_initializer=xs, session_option={"log_severity_level": 1})
     outs = engine(**xs)
     assert outs["output"].shape == (32, 64, 80, 80)
