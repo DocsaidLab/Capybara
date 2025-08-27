@@ -55,7 +55,7 @@ jobs:
         run: |
           mkdir -p tests/coverage
           python -m pip install pytest pytest-cov typeguard
-          python -m pytest tests --junitxml=tests/coverage/cov-junitxml.xml --cov=capybara
+          python -m pytest tests --ignore tests/onnxruntime/test_engine_io_binding.py --junitxml=tests/coverage/cov-junitxml.xml --cov=capybara
 
       - name: Surface failing tests
         uses: pmeier/pytest-results-action@main

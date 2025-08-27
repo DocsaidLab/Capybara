@@ -3,7 +3,7 @@ requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "capybara_docsaid"
+name = "capybara-docsaid"
 dynamic = ["version"]
 description = "An Image Processing and Deep Learning Toolkit."
 readme = {file = "README.md", content-type = "text/markdown"}

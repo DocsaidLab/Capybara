@@ -53,6 +53,7 @@ class ONNXEngineIOBinding:
             providers=providers,
             provider_options=provider_options,
         )
+        self.device = "cuda" if "CUDAExecutionProvider" in self.sess.get_providers() else "cpu"
 
         # setting onnxruntime session info
         self.model_path = model_path
@@ -62,9 +63,7 @@ class ONNXEngineIOBinding:
 
         input_infos, output_infos = self._init_io_infos(model_path, input_initializer)
 
-        io_binding, x_ortvalues, y_ortvalues = self._setup_io_binding(
-            input_infos, output_infos
-        )
+        io_binding, x_ortvalues, y_ortvalues = self._setup_io_binding(input_infos, output_infos)
         self.io_binding = io_binding
         self.x_ortvalues = x_ortvalues
         self.y_ortvalues = y_ortvalues
@@ -121,14 +120,10 @@ class ONNXEngineIOBinding:
         y_ortvalues = {}
         for k, v in input_infos.items():
             m = np.zeros(**v)
-            x_ortvalues[k] = ort.OrtValue.ortvalue_from_numpy(
-                m, device_type="cuda", device_id=self.device_id
-            )
+            x_ortvalues[k] = ort.OrtValue.ortvalue_from_numpy(m, device_type=self.device, device_id=self.device_id)
         for k, v in output_infos.items():
             m = np.zeros(**v)
-            y_ortvalues[k] = ort.OrtValue.ortvalue_from_numpy(
-                m, device_type="cuda", device_id=self.device_id
-            )
+            y_ortvalues[k] = ort.OrtValue.ortvalue_from_numpy(m, device_type=self.device, device_id=self.device_id)
 
         io_binding = self.sess.io_binding()
         for k, v in x_ortvalues.items():
@@ -158,11 +153,7 @@ class ONNXEngineIOBinding:
                 if isinstance(value, dict):
                     info.append(f"{prefix}{key}:")
                     info.append(format_nested_dict(value, indent + 1))
-                elif (
-                    isinstance(value, str)
-                    and value.startswith("{")
-                    and value.endswith("}")
-                ):
+                elif isinstance(value, str) and value.startswith("{") and value.endswith("}"):
                     try:
                         nested_dict = eval(value)
                         if isinstance(nested_dict, dict):
@@ -179,9 +170,7 @@ class ONNXEngineIOBinding:
         title = "DOCSAID X ONNXRUNTIME"
         divider_length = 50
         divider = f"+{'-' * divider_length}+"
-        styled_title = colored.stylize(
-            title, [colored.fg("blue"), colored.attr("bold")]
-        )
+        styled_title = colored.stylize(title, [colored.fg("blue"), colored.attr("bold")])
 
         def center_text(text, width):
             """Center text within a fixed width, handling ANSI escape codes."""
