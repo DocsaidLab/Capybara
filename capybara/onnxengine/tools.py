@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Union
 
 import onnx
-import onnxsim
+import onnxslim
 from onnx.helper import make_graph, make_model, make_opsetid, tensor_dtype_to_np_dtype
 
 __all__ = [
@@ -75,5 +75,5 @@ def make_onnx_dynamic_axes(
         if x.op_type == "Reshape":
             raise ValueError("Reshape cannot be trasformed to dynamic axes")
 
-    new_model, _ = onnxsim.simplify(new_model)
+    new_model = onnxslim.slim(new_model)
     onnx.save(new_model, output_fpath)
