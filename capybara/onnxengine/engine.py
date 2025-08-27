@@ -1,4 +1,3 @@
-from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Union
 
@@ -6,15 +5,9 @@ import colored
 import numpy as np
 import onnxruntime as ort
 
-from ..enums import EnumCheckMixin
+from .enum import Backend
 from .metadata import parse_metadata_from_onnx
 from .tools import get_onnx_input_infos, get_onnx_output_infos
-
-
-class Backend(EnumCheckMixin, Enum):
-    cpu = 0
-    cuda = 1
-    coreml = 2
 
 
 class ONNXEngine:

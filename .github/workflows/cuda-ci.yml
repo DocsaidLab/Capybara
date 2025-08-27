@@ -1,4 +1,4 @@
-name: Pull Request
+name: Pull Request for Ubuntu with GPU
 
 on:
   pull_request:
@@ -53,7 +53,7 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - "3.10"
+          - "3.10.16"
     container:
       image: ${{ needs.build_docker_image.outputs.image }}
       options: --user ${{ needs.get_runner_and_uid.outputs.uid }} --gpus all
@@ -61,6 +61,14 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          check-latest: true
 
       - name: Install Dependencies
         run: |
@@ -68,7 +76,7 @@ jobs:
 
       - name: Build and Install Package
         run: |
-          python3 setup.py bdist_wheel && \
+          python3 setup.py bdist_wheel --universal && \
           wheel_file=$(ls dist/*.whl 2>/dev/null || echo '') && \
           if [ -z "$wheel_file" ]; then
             echo 'Error: No wheel file found in dist directory.' && exit 1
@@ -77,20 +85,28 @@ jobs:
 
       - name: Lint with Pylint
         run: |
-          python3 -m pylint capybara \
-          --rcfile=.github/workflows/.pylintrc \
-          --load-plugins pylint_flask
+          python3 -m pylint capybara --rcfile=.github/workflows/.pylintrc --load-plugins pylint_flask
 
-      - name: Run Tests with Pytest
+      - name: Run tests with pytest
         run: |
-          mkdir -p tests/coverage && \
-          python3 -m pytest tests --junitxml=tests/coverage/cov-junitxml.xml \
-          --cov=capybara | tee tests/coverage/cov.txt
+          mkdir -p tests/coverage
+          python -m pip install pytest pytest-cov typeguard
+          python -m pytest tests --junitxml=tests/coverage/cov-junitxml.xml --cov=capybara
 
-      - name: Pytest Coverage Comment
-        id: coverageComment
-        uses: MishaKav/pytest-coverage-comment@main
+      - name: Surface failing tests
+        uses: pmeier/pytest-results-action@main
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          pytest-coverage-path: tests/coverage/cov.txt
-          junitxml-path: tests/coverage/cov-junitxml.xml
+          path: tests/coverage/cov-junitxml.xml
+          summary: true
+          display-options: fEX
+          fail-on-empty: true
+          title: Test results
+
+      - name: Clean artifacts
+        run:
+          rm -rf dist wheelhouse build *.egg-info
+
+      - name: Clean workspace when fail
+        if: failure()
+        run:
+          rm -rf ${{ github.workspace }}

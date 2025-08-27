@@ -2,13 +2,17 @@ from pathlib import Path
 from typing import Dict, List, Optional, Union
 
 import onnx
-import onnxsim
+import onnxruntime as ort
+import onnxslim
 from onnx.helper import make_graph, make_model, make_opsetid, tensor_dtype_to_np_dtype
+
+from .enum import Backend
 
 __all__ = [
     "get_onnx_input_infos",
     "get_onnx_output_infos",
     "make_onnx_dynamic_axes",
+    "get_recommended_backend",
 ]
 
 
@@ -75,5 +79,16 @@ def make_onnx_dynamic_axes(
         if x.op_type == "Reshape":
             raise ValueError("Reshape cannot be trasformed to dynamic axes")
 
-    new_model, _ = onnxsim.simplify(new_model)
+    new_model = onnxslim.slim(new_model)
     onnx.save(new_model, output_fpath)
+
+
+def get_recommended_backend() -> Backend:
+    providers = ort.get_available_providers()
+    device = ort.get_device()
+    if "CUDAExecutionProvider" in providers and device == "GPU":
+        return Backend.cuda
+    elif "CoreMLExecutionProvider" in providers:
+        return Backend.coreml
+    else:
+        return Backend.cpu
