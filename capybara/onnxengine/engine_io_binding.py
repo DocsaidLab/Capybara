@@ -5,6 +5,7 @@ import colored
 import numpy as np
 import onnxruntime as ort
 
+from .enum import Backend
 from .metadata import get_onnx_metadata
 from .tools import get_onnx_input_infos, get_onnx_output_infos
 
@@ -17,6 +18,7 @@ class ONNXEngineIOBinding:
         gpu_id: int = 0,
         session_option: Dict[str, Any] = {},
         provider_option: Dict[str, Any] = {},
+        backend: Union[str, int, Backend] = Backend.cuda,
     ):
         """
         Initialize an ONNX model inference engine.
@@ -32,27 +34,30 @@ class ONNXEngineIOBinding:
                 Provider options. Defaults to {}.
         """
         self.device_id = gpu_id
-        providers = ["CUDAExecutionProvider"]
-        provider_options = [
-            {
-                "device_id": self.device_id,
-                "cudnn_conv_use_max_workspace": "1",
-                "enable_cuda_graph": "1",
-                **provider_option,
-            }
-        ]
+
+        if backend == Backend.cuda:
+            providers = [
+                (
+                    "CUDAExecutionProvider",
+                    {
+                        "device_id": self.device_id,
+                        "cudnn_conv_use_max_workspace": "1",
+                        "enable_cuda_graph": "1",
+                        **provider_option,
+                    },
+                )
+            ]
+        elif backend == Backend.coreml:
+            providers = [("CoreMLExecutionProvider", {**provider_option})]
+        else:
+            providers = [("CPUExecutionProvider", {**provider_option})]
 
         # setting session options
         sess_options = self._get_session_info(session_option)
 
         # setting onnxruntime session
         model_path = str(model_path) if isinstance(model_path, Path) else model_path
-        self.sess = ort.InferenceSession(
-            model_path,
-            sess_options=sess_options,
-            providers=providers,
-            provider_options=provider_options,
-        )
+        self.sess = ort.InferenceSession(model_path, sess_options=sess_options, providers=providers)
         self.device = "cuda" if "CUDAExecutionProvider" in self.sess.get_providers() else "cpu"
 
         # setting onnxruntime session info
@@ -81,10 +86,7 @@ class ONNXEngineIOBinding:
         self.sess.run_with_iobinding(self.io_binding)
         return {k: v.numpy() for k, v in self.y_ortvalues.items()}
 
-    def _get_session_info(
-        self,
-        session_option: Dict[str, Any] = {},
-    ) -> ort.SessionOptions:
+    def _get_session_info(self, session_option: Dict[str, Any] = {}) -> ort.SessionOptions:
         """
         Ref: https://onnxruntime.ai/docs/api/python/api_summary.html#sessionoptions
         """
@@ -99,10 +101,7 @@ class ONNXEngineIOBinding:
         return sess_opt
 
     def _init_io_infos(self, model_path, input_initializer: dict):
-        sess = ort.InferenceSession(
-            model_path,
-            providers=["CPUExecutionProvider"],
-        )
+        sess = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
         outs = sess.run(None, input_initializer)
         input_shapes = {k: v.shape for k, v in input_initializer.items()}
         output_shapes = {x.name: o.shape for x, o in zip(sess.get_outputs(), outs)}
