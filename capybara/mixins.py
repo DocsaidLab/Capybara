@@ -8,11 +8,13 @@ from warnings import warn
 import numpy as np
 from dacite import from_dict
 
-from .structures import Box, Boxes, Polygon, Polygons
+from .structures import Box, Boxes, Keypoints, KeypointsList, Polygon, Polygons
 
 __all__ = [
-    'EnumCheckMixin', 'DataclassCopyMixin', 'DataclassToJsonMixin',
-    'dict_to_jsonable',
+    "EnumCheckMixin",
+    "DataclassCopyMixin",
+    "DataclassToJsonMixin",
+    "dict_to_jsonable",
 ]
 
 
@@ -27,18 +29,14 @@ def dict_to_jsonable(
             out[k] = jsonable_func[k](v)
         else:
             if isinstance(v, (Box, Boxes)):
-                out[k] = v.convert('XYXY').numpy().astype(
-                    float).round().tolist()
-            elif isinstance(v, (Polygon, Polygons)):
+                out[k] = v.convert("XYXY").numpy().astype(float).round().tolist()
+            elif isinstance(v, (Keypoints, KeypointsList, Polygon, Polygons)):
                 out[k] = v.numpy().astype(float).round().tolist()
             elif isinstance(v, (np.ndarray, np.generic)):
+                # include array and scalar, if you want jsonable image please use jsonable_func
                 out[k] = v.tolist()
             elif isinstance(v, (list, tuple)):
-                out[k] = [
-                    dict_to_jsonable(x, jsonable_func) if isinstance(
-                        x, dict) else x
-                    for x in v
-                ]
+                out[k] = [dict_to_jsonable(x, jsonable_func) if isinstance(x, dict) else x for x in v]
             elif isinstance(v, Enum):
                 out[k] = v.name
             elif isinstance(v, Mapping):
@@ -55,7 +53,6 @@ def dict_to_jsonable(
 
 
 class EnumCheckMixin:
-
     @classmethod
     def obj_to_enum(cls: Enum, obj: Any):
         if isinstance(obj, str):
@@ -75,12 +72,8 @@ class EnumCheckMixin:
 
 
 class DataclassCopyMixin:
-
     def __copy__(self):
-        return self.__class__(**{
-            field: getattr(self, field)
-            for field in self.__dataclass_fields__
-        })
+        return self.__class__(**{field: getattr(self, field) for field in self.__dataclass_fields__})
 
     def __deepcopy__(self, memo):
         out = asdict(self, dict_factory=OrderedDict)
@@ -88,13 +81,8 @@ class DataclassCopyMixin:
 
 
 class DataclassToJsonMixin:
-
-    def __init__(self):
-        self.jsonable_func = None
+    jsonable_func = None
 
     def be_jsonable(self, dict_factory=OrderedDict):
         d = asdict(self, dict_factory=dict_factory)
-        return dict_to_jsonable(d, getattr(self, 'jsonable_func', None), dict_factory)
-
-    def regist_jsonable_func(self, jsonable_func: Optional[Dict[str, Callable]] = None):
-        self.jsonable_func = jsonable_func
+        return dict_to_jsonable(d, jsonable_func=self.jsonable_func, dict_factory=dict_factory)
