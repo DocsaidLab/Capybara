@@ -35,6 +35,7 @@ jobs:
       - name: Update Python version
         run: |
           sed -i "s/__version__ = '[0-9]\+\(\.[0-9]\+\)\{1,2\}\(rc[0-9]\+\|[ab][0-9]\+\)\?'/__version__ = '${{ github.event.inputs.version_tag }}'/g" capybara/__init__.py
+          sed -i 's/__version__ = "[0-9]\+\(\.[0-9]\+\)\{1,2\}\(rc[0-9]\+\|[ab][0-9]\+\)\?"/__version__ = "${{ github.event.inputs.version_tag }}"/g' capybara/__init__.py
 
       - name: Commit & Push changes of Version Updating
         uses: actions-js/push@master
