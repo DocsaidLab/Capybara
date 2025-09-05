@@ -20,7 +20,7 @@ def get_curdir(
         folder (Union[str, Path]): folder path.
     """
     path = Path(path).absolute() if absolute else Path(path)
-    return path.parent.resolve()
+    return path.parent.resolve() if absolute else path.parent
 
 
 def rm_path(path: Union[str, Path]):
