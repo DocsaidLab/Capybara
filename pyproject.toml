@@ -45,7 +45,8 @@ dependencies = [
   "beautifulsoup4",
   "onnxruntime==1.22.0; platform_system == 'Darwin'",
   "onnxruntime_gpu==1.22.0; platform_system == 'Linux'",
-  "pillow-heif"
+  "pillow-heif",
+  "distro"
 ]
 
 [project.urls]
