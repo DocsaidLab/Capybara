@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61", "wheel"]
+requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -16,7 +16,10 @@ classifiers = [
   "Intended Audience :: Science/Research",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Software Development :: Libraries",
   "Topic :: Software Development :: Libraries :: Python Modules"
 ]
@@ -58,7 +61,68 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 include = ["capybara*"]
-exclude = ["demo", "tests", "docs", ".github", "docker", "wheelhouse"]
+exclude = [
+  "demo",
+  "tests",
+  "docs",
+  ".github",
+  "docker",
+  "wheelhouse"
+]
 
 [tool.setuptools.dynamic]
 version = { attr = "capybara.__version__" }
+
+[tool.pytest.ini_options]
+pythonpath = [
+  ".",
+]
+testpaths = [
+  "tests",
+]
+addopts = "--ignore=tmp"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 80
+extend-exclude = [
+  ".git",
+  ".mypy_cache",
+  ".pytest_cache",
+  "__pycache__",
+  ".venv",
+  "venv",
+  "build",
+  "dist",
+  ".tox",
+  ".eggs",
+  "*.egg-info",
+]
+
+[tool.ruff.lint]
+select = [
+  "E",
+  "F",
+  "W",
+  "B",
+  "UP",
+  "N",
+  "I",
+  "C4",
+  "SIM",
+  "RUF",
+]
+ignore = [
+  "E203",
+  "E501",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["capybara", "tests"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
