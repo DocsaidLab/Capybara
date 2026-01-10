@@ -15,7 +15,7 @@ except TypeError:  # pragma: no cover - older numpy
     _BFLOAT16 = np.float16
 
 try:  # pragma: no cover - optional dependency handled at runtime
-    import onnxruntime as ort
+    import onnxruntime as ort  # type: ignore
 except Exception as exc:  # pragma: no cover
     raise ImportError(
         "onnxruntime is required. Install 'onnxruntime' or 'onnxruntime-gpu'."

@@ -4,7 +4,7 @@ import subprocess
 from importlib import import_module
 from typing import Any, cast
 
-import psutil
+import psutil  # type: ignore
 import requests
 
 __all__ = [
@@ -27,7 +27,7 @@ def get_package_versions():
 
     # PyTorch
     try:
-        import torch
+        import torch  # type: ignore
 
         versions_info["PyTorch Version"] = torch.__version__
     except Exception as e:
@@ -35,7 +35,7 @@ def get_package_versions():
 
     # PyTorch Lightning
     try:
-        import pytorch_lightning as pl
+        import pytorch_lightning as pl  # type: ignore
 
         versions_info["PyTorch Lightning Version"] = str(
             getattr(pl, "__version__", "unknown")
@@ -67,7 +67,7 @@ def get_package_versions():
 
     # Pandas
     try:
-        import pandas as pd
+        import pandas as pd  # type: ignore
 
         versions_info["Pandas Version"] = pd.__version__
     except Exception as e:
@@ -75,7 +75,7 @@ def get_package_versions():
 
     # Scikit-learn
     try:
-        import sklearn
+        import sklearn  # type: ignore
 
         versions_info["Scikit-learn Version"] = sklearn.__version__
     except Exception as e:
@@ -83,7 +83,7 @@ def get_package_versions():
 
     # OpenCV
     try:
-        import cv2
+        import cv2  # type: ignore
 
         versions_info["OpenCV Version"] = cv2.__version__
     except Exception as e:
@@ -106,7 +106,7 @@ def get_gpu_cuda_versions():
 
     # Attempt to retrieve CUDA version using PyTorch
     try:
-        import torch
+        import torch  # type: ignore
 
         cuda_version = getattr(getattr(torch, "version", None), "cuda", None)
     except ImportError:

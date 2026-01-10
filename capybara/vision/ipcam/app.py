@@ -1,4 +1,4 @@
-from flask import Flask, Response, render_template_string
+from flask import Flask, Response, render_template_string  # type: ignore
 
 from ...utils import get_curdir
 from ..improc import jpgencode

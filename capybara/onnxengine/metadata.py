@@ -9,7 +9,7 @@ import onnx
 from ..utils.time import now
 
 try:  # pragma: no cover - optional dependency
-    import onnxruntime as ort
+    import onnxruntime as ort  # type: ignore
 except Exception:  # pragma: no cover - handled lazily
     ort = None  # type: ignore[assignment]
 

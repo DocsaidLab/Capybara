@@ -308,7 +308,7 @@ _OPENVINO_AUTO_PRIORITY: tuple[tuple[str, str], ...] = (
 
 def _get_available_onnx_providers() -> set[str]:
     try:  # pragma: no cover - optional dependency
-        import onnxruntime as ort
+        import onnxruntime as ort  # type: ignore
     except Exception:
         return set()
     try:
@@ -319,7 +319,7 @@ def _get_available_onnx_providers() -> set[str]:
 
 def _get_torch_capabilities() -> tuple[bool, bool]:
     try:  # pragma: no cover - optional dependency
-        import torch
+        import torch  # type: ignore
     except Exception:
         return False, False
     try:
