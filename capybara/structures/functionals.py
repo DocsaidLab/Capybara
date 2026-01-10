@@ -1,5 +1,3 @@
-from typing import Optional, Tuple, Union
-
 import cv2
 import numpy as np
 from shapely.geometry import Polygon as ShapelyPolygon
@@ -9,9 +7,14 @@ from .keypoints import Keypoints
 from .polygons import Polygon
 
 __all__ = [
-    'pairwise_intersection', 'pairwise_iou', 'pairwise_ioa',
-    'jaccard_index', 'polygon_iou', 'is_inside_box', 'calc_angle',
-    'poly_angle',
+    "calc_angle",
+    "is_inside_box",
+    "jaccard_index",
+    "pairwise_intersection",
+    "pairwise_ioa",
+    "pairwise_iou",
+    "poly_angle",
+    "polygon_iou",
 ]
 
 
@@ -27,10 +30,10 @@ def pairwise_intersection(boxes1: Boxes, boxes2: Boxes) -> np.ndarray:
         ndarray: intersection, sized [N, M].
     """
     if not isinstance(boxes1, Boxes) or not isinstance(boxes2, Boxes):
-        raise TypeError(f'Input type of boxes1 and boxes2 must be Boxes.')
+        raise TypeError("Input type of boxes1 and boxes2 must be Boxes.")
 
-    boxes1_ = boxes1.convert('XYXY').numpy()
-    boxes2_ = boxes2.convert('XYXY').numpy()
+    boxes1_ = boxes1.convert("XYXY").numpy()
+    boxes2_ = boxes2.convert("XYXY").numpy()
     lt = np.maximum(boxes1_[:, None, :2], boxes2_[:, :2])
     rb = np.minimum(boxes1_[:, None, 2:], boxes2_[:, 2:])
     width_height = (rb - lt).clip(min=0)
@@ -51,12 +54,12 @@ def pairwise_iou(boxes1: Boxes, boxes2: Boxes) -> np.ndarray:
         ndarray: IoU, sized [N,M].
     """
     if not isinstance(boxes1, Boxes) or not isinstance(boxes2, Boxes):
-        raise TypeError(f'Input type of boxes1 and boxes2 must be Boxes.')
+        raise TypeError("Input type of boxes1 and boxes2 must be Boxes.")
 
     if np.any(boxes1._xywh[:, 2:] <= 0) or np.any(boxes2._xywh[:, 2:] <= 0):
         raise ValueError(
-            'Some boxes in Boxes has invaild value, which width or '
-            'height is smaller than zero or other unexpected reasons, '
+            "Some boxes in Boxes has invaild value, which width or "
+            "height is smaller than zero or other unexpected reasons, "
             'try to run "drop_empty()" at first.'
         )
 
@@ -77,12 +80,12 @@ def pairwise_ioa(boxes1: Boxes, boxes2: Boxes) -> np.ndarray:
         ndarray: IoA, sized [N,M].
     """
     if not isinstance(boxes1, Boxes) or not isinstance(boxes2, Boxes):
-        raise TypeError(f'Input type of boxes1 and boxes2 must be Boxes.')
+        raise TypeError("Input type of boxes1 and boxes2 must be Boxes.")
 
     if np.any(boxes1._xywh[:, 2:] <= 0) or np.any(boxes2._xywh[:, 2:] <= 0):
         raise ValueError(
-            'Some boxes in Boxes has invaild value, which width or '
-            'height is smaller than zero or other unexpected reasons, '
+            "Some boxes in Boxes has invaild value, which width or "
+            "height is smaller than zero or other unexpected reasons, "
             'try to run "drop_empty()" at first.'
         )
 
@@ -95,7 +98,7 @@ def pairwise_ioa(boxes1: Boxes, boxes2: Boxes) -> np.ndarray:
 def jaccard_index(
     pred_poly: np.ndarray,
     gt_poly: np.ndarray,
-    image_size: Tuple[int, int],
+    image_size: tuple[int, int],
 ) -> float:
     """
     Reference : https://github.com/jchazalon/smartdoc15-ch1-eval
@@ -114,29 +117,26 @@ def jaccard_index(
     """
 
     if pred_poly.shape != (4, 2) or gt_poly.shape != (4, 2):
-        raise ValueError(f'Input polygon must be 4-point polygon.')
+        raise ValueError("Input polygon must be 4-point polygon.")
 
     if image_size is None:
-        raise ValueError(f'Input image size must be provided.')
+        raise ValueError("Input image size must be provided.")
 
     pred_poly = pred_poly.astype(np.float32)
     gt_poly = gt_poly.astype(np.float32)
 
     height, width = image_size
-    object_coord_target = np.array([
-        [0, 0],
-        [width, 0],
-        [width, height],
-        [0, height]]
+    object_coord_target = np.array(
+        [[0, 0], [width, 0], [width, height], [0, height]]
     ).astype(np.float32)
 
-    M = cv2.getPerspectiveTransform(
+    matrix = cv2.getPerspectiveTransform(
         gt_poly.reshape(-1, 1, 2),
         object_coord_target[None, ...],
     )
 
     transformed_pred_coords = cv2.perspectiveTransform(
-        pred_poly.reshape(-1, 1, 2), M
+        pred_poly.reshape(-1, 1, 2), matrix
     )
 
     try:
@@ -157,10 +157,10 @@ def jaccard_index(
             area_inter = area_min
 
         jaccard_index = area_inter / area_union
-    except:
-        # 通常錯誤來自於：
+    except Exception:
+        # 通常錯誤來自於:
         # TopologyException: Input geom 1 is invalid: Ring Self-intersection
-        # 表示多邊形自己交叉了，這時候就直接給 0
+        # 表示多邊形自己交叉了, 這時候就直接給 0
         jaccard_index = 0
 
     return jaccard_index
@@ -177,18 +177,18 @@ def polygon_iou(poly1: Polygon, poly2: Polygon):
         float: IoU.
     """
     if not isinstance(poly1, Polygon) or not isinstance(poly2, Polygon):
-        raise TypeError(f'Input type of poly1 and poly2 must be Polygon.')
+        raise TypeError("Input type of poly1 and poly2 must be Polygon.")
 
-    poly1 = poly1.numpy().astype(np.float32)
-    poly2 = poly2.numpy().astype(np.float32)
+    poly1_arr = poly1.numpy().astype(np.float32)
+    poly2_arr = poly2.numpy().astype(np.float32)
 
     try:
-        poly1 = ShapelyPolygon(poly1)
-        poly2 = ShapelyPolygon(poly2)
-        poly_inter = poly1 & poly2
+        poly1_shape = ShapelyPolygon(poly1_arr)
+        poly2_shape = ShapelyPolygon(poly2_arr)
+        poly_inter = poly1_shape.intersection(poly2_shape)
 
-        area_target = poly1.area
-        area_test = poly2.area
+        area_target = poly1_shape.area
+        area_test = poly2_shape.area
         area_inter = poly_inter.area
 
         area_union = area_test + area_target - area_inter
@@ -200,16 +200,16 @@ def polygon_iou(poly1: Polygon, poly2: Polygon):
             area_inter = area_min
 
         iou = area_inter / area_union
-    except:
-        # 通常錯誤來自於：
+    except Exception:
+        # 通常錯誤來自於:
         # TopologyException: Input geom 1 is invalid: Ring Self-intersection
-        # 表示多邊形自己交叉了，這時候就直接給 0
+        # 表示多邊形自己交叉了, 這時候就直接給 0
         iou = 0
 
     return iou
 
 
-def is_inside_box(x: Union[Box, Keypoints, Polygon], box: Box) -> np.bool_:
+def is_inside_box(x: Box | Keypoints | Polygon, box: Box) -> np.bool_:
     cond1 = x._array >= box.left_top
     cond2 = x._array <= box.right_bottom
     return np.concatenate((cond1, cond2), axis=-1).all()
@@ -238,8 +238,8 @@ def calc_angle(v1, v2):
 
 def poly_angle(
     poly1: Polygon,
-    poly2: Optional[Polygon] = None,
-    base_vector: Tuple[int, int] = (0, 1)
+    poly2: Polygon | None = None,
+    base_vector: tuple[int, int] = (0, 1),
 ) -> float:
     """
     Calculate the angle between two polygons or a polygon and a base vector.
@@ -252,7 +252,10 @@ def poly_angle(
         return vector1 + vector2
 
     v1 = _get_angle(poly1)
-    v2 = _get_angle(poly2) if poly2 is not None else np.array(
-        base_vector, dtype='float32')
+    v2 = (
+        _get_angle(poly2)
+        if poly2 is not None
+        else np.array(base_vector, dtype="float32")
+    )
 
     return calc_angle(v1, v2)

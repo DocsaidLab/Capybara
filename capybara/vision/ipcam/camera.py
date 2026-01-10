@@ -5,12 +5,11 @@ import numpy as np
 
 from ..functionals import imcvtcolor
 
-__all__ = ['IpcamCapture']
+__all__ = ["IpcamCapture"]
 
 
 class IpcamCapture:
-
-    def __init__(self, url=0, color_base='BGR'):
+    def __init__(self, url: int | str = 0, color_base: str = "BGR") -> None:
         """
         Initializes the IpcamCapture class.
 
@@ -43,7 +42,7 @@ class IpcamCapture:
         self._lock = Lock()
 
         if self._h == 0 or self._w == 0:
-            raise ValueError(f'The image size is not supported.')
+            raise ValueError("The image size is not supported.")
 
         Thread(target=self._queryframe, daemon=True).start()
 
@@ -52,8 +51,8 @@ class IpcamCapture:
             ret, frame = self._capture.read()
             if not ret:
                 break  # Stop the loop if the video stream has ended or is unreadable
-            if self.color_base != 'BGR':
-                frame = imcvtcolor(frame, cvt_mode=f'BGR2{self.color_base}')
+            if self.color_base != "BGR":
+                frame = imcvtcolor(frame, cvt_mode=f"BGR2{self.color_base}")
             with self._lock:
                 self._frame = frame
 
@@ -66,4 +65,7 @@ class IpcamCapture:
         return frame
 
     def __iter__(self):
-        yield self.get_frame()
+        return self
+
+    def __next__(self):
+        return self.get_frame()

@@ -1,5 +1,6 @@
+from collections.abc import Sequence
 from copy import deepcopy
-from typing import Any, List, Tuple, Union
+from typing import Any, Union, cast, overload
 from warnings import warn
 
 import cv2
@@ -10,26 +11,20 @@ from shapely.geometry import Polygon as _Polygon_shapely
 from ..typing import _Number
 
 __all__ = [
-    'Polygon', 'Polygons', 'order_points_clockwise', 'JOIN_STYLE',
+    "JOIN_STYLE",
+    "Polygon",
+    "Polygons",
+    "order_points_clockwise",
 ]
 
-_Polygon = Union[
-    np.ndarray,
-    List[Tuple[_Number, _Number]],
-    "Polygon"
-]
-
-_Polygons = Union[
-    np.ndarray,
-    List["Polygon"],
-    List[np.ndarray],
-    List[List[Tuple[_Number, _Number]]],
-    "Polygons"
-]
+_Polygon = Union[np.ndarray, Sequence[Sequence[_Number]], "Polygon"]
+_Polygons = Union[np.ndarray, Sequence[_Polygon], "Polygons"]
 
 
-def order_points_clockwise(pts: np.ndarray, inverse: bool = False) -> np.ndarray:
-    """ Order the 4 points clockwise.
+def order_points_clockwise(
+    pts: np.ndarray, inverse: bool = False
+) -> np.ndarray:
+    """Order the 4 points clockwise.
 
     Args:
         pts (np.ndarray):
@@ -45,7 +40,7 @@ def order_points_clockwise(pts: np.ndarray, inverse: bool = False) -> np.ndarray
     """
 
     if pts.shape != (4, 2):
-        raise ValueError('Input array `pts` must be of shape (4, 2).')
+        raise ValueError("Input array `pts` must be of shape (4, 2).")
 
     x_sorted = pts[np.argsort(pts[:, 0]), :]
     left_most = x_sorted[:2, :]
@@ -69,11 +64,7 @@ class Polygon:
     has shape (K, 2) where K is the number of points per instance.
     """
 
-    def __init__(
-        self,
-        array: _Polygon,
-        is_normalized: bool = False
-    ):
+    def __init__(self, array: _Polygon, is_normalized: bool = False):
         """
         Args:
             array (Union[np.ndarray, list]): A Nx2 or Nx1x2 matrix.
@@ -82,12 +73,18 @@ class Polygon:
         self.is_normalized = is_normalized
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({str(self._array)})"
+        return f"{self.__class__.__name__}({self._array!s})"
 
     def __len__(self) -> int:
         return self._array.shape[0]
 
-    def __getitem__(self, item) -> float:
+    @overload
+    def __getitem__(self, item: int) -> np.ndarray: ...
+
+    @overload
+    def __getitem__(self, item: slice) -> np.ndarray: ...
+
+    def __getitem__(self, item):
         return self._array[item]
 
     def __eq__(self, value: object) -> bool:
@@ -97,32 +94,27 @@ class Polygon:
 
     def _check_valid_array(self, array: _Polygon) -> np.ndarray:
         if isinstance(array, (list, tuple)):
-            array = np.array(array, dtype='float32')
+            array = np.array(array, dtype="float32")
         if isinstance(array, Polygon):
             array = array.numpy()
-        cond1 = isinstance(
-            array, np.ndarray) and array.ndim == 3 and array.shape[1] == 1
-        cond2 = isinstance(
-            array, np.ndarray) and array.ndim == 2 and array.shape[1] == 2
-        cond3 = isinstance(
-            array, np.ndarray) and array.ndim == 1 and len(array) == 0
-        cond4 = isinstance(
-            array, np.ndarray) and array.ndim == 1 and len(array) == 2
-        cond5 = isinstance(array, self.__class__)
-        if not (cond1 or cond2 or cond3 or cond4 or cond5):
-            raise TypeError(f'Input array must be {_Polygon}.')
-        if cond3 or cond4:
+        if not isinstance(array, np.ndarray):
+            raise TypeError(f"Input array must be {_Polygon}.")
+        if array.ndim == 1 and len(array) in {0, 2}:
             array = array[None]
-        if cond1:
+        if array.ndim == 3 and array.shape[1] == 1:
             array = np.squeeze(array, axis=1)
-        return array.astype('float32')
+        if array.ndim == 2 and array.shape[1] == 2:
+            return array.astype("float32")
+        if array.ndim == 2 and array.shape == (1, 0):
+            return array.astype("float32")
+        raise TypeError(f"Input array must be {_Polygon}.")
 
     def copy(self) -> "Polygon":
-        """ Create a copy of the Polygon object. """
+        """Create a copy of the Polygon object."""
         return self.__class__(self._array)
 
     def numpy(self) -> np.ndarray:
-        """ Convert the Polygon object to a numpy array. """
+        """Convert the Polygon object to a numpy array."""
         return self._array.copy()
 
     def normalize(self, w: float, h: float) -> "Polygon":
@@ -137,7 +129,10 @@ class Polygon:
             Normalized Polygon object.
         """
         if self.is_normalized:
-            warn(f'Normalized polygon is forced to do normalization.')
+            warn(
+                "Normalized polygon is forced to do normalization.",
+                stacklevel=2,
+            )
         arr = self._array.copy()
         arr = arr / (w, h)
         return self.__class__(arr, is_normalized=True)
@@ -154,7 +149,10 @@ class Polygon:
             Denormalized Polygon object.
         """
         if not self.is_normalized:
-            warn(f'Non-normalized polygon is forced to do denormalization.')
+            warn(
+                "Non-normalized polygon is forced to do denormalization.",
+                stacklevel=2,
+            )
         arr = self._array.copy()
         arr = arr * (w, h)
         return self.__class__(arr, is_normalized=False)
@@ -198,7 +196,7 @@ class Polygon:
     def scale(
         self,
         distance: int,
-        join_style: JOIN_STYLE = JOIN_STYLE.mitre
+        join_style: int = JOIN_STYLE.mitre,
     ) -> "Polygon":
         """
         Returns an approximate representation of all points within a given distance
@@ -211,14 +209,15 @@ class Polygon:
         These values are also enumerated by the object shapely.geometry.JOIN_STYLE
         """
         poly = _Polygon_shapely(self._array).buffer(
-            distance, join_style=join_style)
+            distance, join_style=cast(Any, join_style)
+        )
 
         if isinstance(poly, MultiPolygon):
             poly = max(poly.geoms, key=lambda p: p.area)
 
         if isinstance(poly, _Polygon_shapely) and not poly.exterior.is_empty:
             pts = np.zeros_like(self._array)
-            for x, y in zip(*poly.exterior.xy):
+            for x, y in zip(*poly.exterior.xy, strict=True):
                 pt = np.array([x, y])
                 dist = np.linalg.norm(pt - self._array, axis=1)
                 pts[dist.argmin()] = pt
@@ -237,15 +236,18 @@ class Polygon:
         return self.__class__(hull)
 
     def to_min_boxpoints(self) -> "Polygon":
-        """ Converts polygon to the min area bounding box. """
+        """Converts polygon to the min area bounding box."""
         min_box = cv2.boxPoints(self.min_box).round(4)
         min_box = order_points_clockwise(np.array(min_box))
         return self.__class__(min_box)
 
-    def to_box(self, box_mode: str = 'xyxy'):
-        """ Converts polygon to the bounding box. """
+    def to_box(self, box_mode: str = "xyxy"):
+        """Converts polygon to the bounding box."""
         from .boxes import Box
-        return Box(self.boundingbox, "xywh", self.is_normalized).convert(box_mode)
+
+        return Box(self.boundingbox, "xywh", self.is_normalized).convert(
+            box_mode
+        )
 
     def to_list(self, flatten: bool = False) -> list:
         if flatten:
@@ -254,7 +256,7 @@ class Polygon:
             return self._array.tolist()
 
     def tolist(self, flatten: bool = False) -> list:
-        """ Alias of `to_list` (numpy style) """
+        """Alias of `to_list` (numpy style)"""
         return self.to_list(flatten=flatten)
 
     def is_empty(self, threshold: int = 3) -> bool:
@@ -264,86 +266,95 @@ class Polygon:
         """
         if not isinstance(threshold, int):
             raise TypeError(
-                f'Input threshold type error, expected "int", got "{type(threshold)}".')
+                f'Input threshold type error, expected "int", got "{type(threshold)}".'
+            )
         return len(self) < threshold
 
     @property
     def moments(self) -> dict:
-        """ Get the moment of area. """
+        """Get the moment of area."""
         return cv2.moments(self._array)
 
     @property
     def area(self) -> float:
-        """ Get the region area. """
-        return self.moments['m00']
+        """Get the region area."""
+        return self.moments["m00"]
 
     @property
     def arclength(self) -> float:
-        """ Get the region arc length. """
+        """Get the region arc length."""
         return cv2.arcLength(self._array, closed=True)
 
     @property
     def centroid(self) -> np.ndarray:
-        """ Get the mass centers. """
-        return np.array([
-            self.moments['m10'] / (self.moments['m00'] + 1e-5),
-            self.moments['m01'] / (self.moments['m00'] + 1e-5)
-        ])
+        """Get the mass centers."""
+        return np.array(
+            [
+                self.moments["m10"] / (self.moments["m00"] + 1e-5),
+                self.moments["m01"] / (self.moments["m00"] + 1e-5),
+            ]
+        )
 
     @property
-    def boundingbox(self) -> np.ndarray:
-        """ Get the bounding box. """
+    def boundingbox(self):
+        """Get the bounding box."""
         from .boxes import Box
-        bbox = cv2.boundingRect(self._array)
+
+        bbox = np.array(cv2.boundingRect(self._array), dtype="float32")
         if not self.is_normalized:
-            bbox = bbox - np.array([0, 0, 1, 1])
-        return Box(bbox, 'xywh')
+            bbox = bbox - np.array([0, 0, 1, 1], dtype="float32")
+        return Box(bbox, "xywh", is_normalized=self.is_normalized)
 
     @property
-    def min_circle(self) -> Tuple[Tuple[int, int], int]:
-        """ Get the min closed circle. """
+    def min_circle(self) -> tuple[Sequence[float], float]:
+        """Get the min closed circle."""
         return cv2.minEnclosingCircle(self._array)
 
     @property
-    def min_box(self) -> Tuple[Tuple[int, int], Tuple[int, int], int]:
-        """ Get the min area rectangle. """
+    def min_box(
+        self,
+    ) -> tuple[Sequence[float], Sequence[float], float]:
+        """Get the min area rectangle."""
         return cv2.minAreaRect(self._array)
 
     @property
     def orientation(self) -> float:
-        """ Get the min area rectangle. """
+        """Get the min area rectangle."""
         _, _, angle = self.min_box
         return angle
 
     @property
-    def min_box_wh(self) -> Tuple[float, float]:
-        """ Get the min area rectangle. """
+    def min_box_wh(self) -> tuple[float, float]:
+        """Get the min area rectangle."""
         _, (w, h), _ = self.min_box
         return w, h
 
     @property
     def extent(self) -> float:
-        """ Ratio of pixels in the region to pixels in the total bounding box. """
+        """Ratio of pixels in the region to pixels in the total bounding box."""
         _, _, w, h = self.boundingbox
         return self.area / (w * h)
 
     @property
     def solidity(self) -> float:
-        """ Ratio of pixels in the region to pixels of the convex hull image. """
+        """Ratio of pixels in the region to pixels of the convex hull image."""
         return self.area / (self.to_convexhull().area + 1e-5)
 
 
 class Polygons:
-
     def __init__(self, polygons: _Polygons, is_normalized: bool = False):
-        if not isinstance(polygons, (list, np.ndarray)):
+        if isinstance(polygons, Polygons):
+            polygons = polygons._polygons
+        elif not isinstance(polygons, (list, tuple, np.ndarray)):
             raise TypeError(
-                f'Input type error: "{polygons}", must be list or np.ndarray type.')
+                f'Input type error: "{polygons}", must be list or np.ndarray type.'
+            )
         self.is_normalized = is_normalized
+        self._polygons: list[Polygon]
         self._polygons = [Polygon(p, is_normalized) for p in polygons]
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({str(self._polygons)})"
+        return f"{self.__class__.__name__}({self._polygons!s})"
 
     def __len__(self) -> int:
         return len(self._polygons)
@@ -355,8 +366,17 @@ class Polygons:
     def __eq__(self, value: object) -> bool:
         if not isinstance(value, self.__class__):
             return False
-        is_same = sum([t == x for t, x in zip(value, self)]) == len(self)
-        return is_same
+        if len(value) != len(self):
+            return False
+        return all(t == x for t, x in zip(value, self, strict=True))
+
+    @overload
+    def __getitem__(self, item: int) -> Polygon: ...
+
+    @overload
+    def __getitem__(
+        self, item: list[int] | slice | np.ndarray
+    ) -> "Polygons": ...
 
     def __getitem__(self, item) -> Union["Polygons", "Polygon"]:
         """
@@ -383,12 +403,13 @@ class Polygons:
         elif isinstance(item, slice):
             output = Polygons(self._polygons[item])
         elif isinstance(item, np.ndarray):
-            if item.dtype == 'bool':
+            if item.dtype == "bool":
                 item = np.argwhere(item).flatten()
             output = Polygons([self._polygons[i] for i in item])
         else:
             raise TypeError(
-                'Input item type error, expected to be int, list, ndarray or slice.')
+                "Input item type error, expected to be int, list, ndarray or slice."
+            )
         return output
 
     def is_empty(self, threshold: int = 3) -> np.ndarray:
@@ -400,102 +421,117 @@ class Polygons:
     def to_convexhull(self) -> "Polygons":
         return Polygons([poly.to_convexhull() for poly in self._polygons])
 
-    def to_boxes(self, box_mode: str = 'xyxy'):
+    def to_boxes(self, box_mode: str = "xyxy"):
         from .boxes import Boxes
-        return Boxes(self.boundingbox, 'xywh', self.is_normalized).convert(box_mode)
+
+        return Boxes(self.boundingbox, "xywh", self.is_normalized).convert(
+            box_mode
+        )
 
     def drop_empty(self, threshold: int = 3) -> "Polygons":
-        return Polygons([p for p in self._polygons if not p.is_empty(threshold)])
+        return Polygons(
+            [p for p in self._polygons if not p.is_empty(threshold)]
+        )
 
     def copy(self):
         return self.__class__(deepcopy(self._polygons))
 
     def normalize(self, w: float, h: float) -> "Polygons":
         if self.is_normalized:
-            warn(f'Normalized polygons are forced to do normalization.')
+            warn(
+                "Normalized polygons are forced to do normalization.",
+                stacklevel=2,
+            )
         _polygons = [x.normalize(w, h) for x in self._polygons]
         polygons = self.__class__(_polygons, is_normalized=True)
         return polygons
 
     def denormalize(self, w: float, h: float) -> "Polygons":
         if not self.is_normalized:
-            warn(f'Non-normalized polygons are forced to do denormalization.')
+            warn(
+                "Non-normalized polygons are forced to do denormalization.",
+                stacklevel=2,
+            )
         _polygons = [x.denormalize(w, h) for x in self._polygons]
         polygons = self.__class__(_polygons, is_normalized=False)
         return polygons
 
     def clip(self, xmin: int, ymin: int, xmax: int, ymax: int) -> "Polygons":
-        return Polygons([p.clip(xmin, ymin, xmax, ymax) for p in self._polygons])
+        return Polygons(
+            [p.clip(xmin, ymin, xmax, ymax) for p in self._polygons]
+        )
 
     def shift(self, shift_x: float, shift_y: float) -> "Polygons":
         return Polygons([p.shift(shift_x, shift_y) for p in self._polygons])
 
     def scale(self, distance: int) -> "Polygons":
-        return Polygons([p.scale(distance) for p in self._polygons]).drop_empty()
+        return Polygons(
+            [p.scale(distance) for p in self._polygons]
+        ).drop_empty()
 
     def numpy(self, flatten: bool = False):
         len_polys = np.array([len(p) for p in self._polygons], dtype=np.int32)
         if (len_polys == len_polys.mean()).all():
-            return np.array(self.to_list(flatten=flatten)).astype('float32')
+            return np.array(self.to_list(flatten=flatten)).astype("float32")
         else:
             return np.array(self._polygons, dtype=object)
 
     def to_list(self, flatten: bool = False) -> list:
-        """ Convert boxes to list.
+        """Convert boxes to list.
 
-            Args:
+        Args:
 
-            is_flatten (bool):
-                True -> Output format (Nx(Mx2)):
+        is_flatten (bool):
+            True -> Output format (Nx(Mx2)):
+                [
+                    [p11, p12, p13, p14],
+                    [p21, p22, p23, p24],
+                    ...,
+                ].
+            False -> Output format (NxMx2):
+                [
                     [
-                        [p11, p12, p13, p14],
-                        [p21, p22, p23, p24],
-                        ...,
-                    ].
-                False -> Output format (NxMx2):
+                        [p11],
+                        [p12],
+                        [p13],
+                        [p14]
+                    ],
                     [
-                        [
-                            [p11],
-                            [p12],
-                            [p13],
-                            [p14]
-                        ],
-                        [
-                            [p21],
-                            [p22],
-                            [p23],
-                            [p24]
-                        ],
-                        ...,
-                    ].
+                        [p21],
+                        [p22],
+                        [p23],
+                        [p24]
+                    ],
+                    ...,
+                ].
         """
         return [p.to_list(flatten) for p in self._polygons]
 
     def tolist(self, flatten: bool = False) -> list:
-        """ Alias of `to_list` (numpy style) """
+        """Alias of `to_list` (numpy style)"""
         return self.to_list(flatten=flatten)
 
-    @ property
+    @property
     def moments(self) -> list:
         return [poly.moments for poly in self._polygons]
 
-    @ property
+    @property
     def min_circle(self) -> list:
         return [poly.min_circle for poly in self._polygons]
 
-    @ property
+    @property
     def min_box(self) -> list:
         return [poly.min_box for poly in self._polygons]
 
-    @ property
+    @property
     def area(self) -> np.ndarray:
         return np.array([poly.area for poly in self._polygons])
 
-    @ property
+    @property
     def arclength(self) -> np.ndarray:
         return np.array([poly.arclength for poly in self._polygons])
 
-    @ property
+    @property
     def centroid(self) -> np.ndarray:
         return np.array([poly.centroid for poly in self._polygons])
 
@@ -503,15 +539,15 @@ class Polygons:
     def boundingbox(self) -> np.ndarray:
         return np.array([poly.boundingbox for poly in self._polygons])
 
-    @ property
+    @property
     def extent(self) -> np.ndarray:
         return np.array([poly.extent for poly in self._polygons])
 
-    @ property
+    @property
     def solidity(self) -> np.ndarray:
         return np.array([poly.solidity for poly in self._polygons])
 
-    @ property
+    @property
     def orientation(self) -> np.ndarray:
         return np.array([poly.orientation for poly in self._polygons])
 
@@ -524,31 +560,34 @@ class Polygons:
         cls,
         image: np.ndarray,
         mode: int = cv2.RETR_EXTERNAL,
-        method: int = cv2.CHAIN_APPROX_SIMPLE
+        method: int = cv2.CHAIN_APPROX_SIMPLE,
     ) -> "Polygons":
         if not isinstance(image, np.ndarray):
-            raise TypeError('Input image must be a np.ndarray.')
+            raise TypeError("Input image must be a np.ndarray.")
         contours, _ = cv2.findContours(image, mode=mode, method=method)
         if len(contours) > 0:
             contours = [c for c in contours if c.shape[0] > 1]
         return cls(list(contours))
 
     @classmethod
-    def cat(cls, polygons_list: List["Polygons"]) -> "Polygons":
+    def cat(cls, polygons_list: list["Polygons"]) -> "Polygons":
         """
         Concatenates a list of Polygon into a single Polygons.
         Returns:
             Polygon: the concatenated Polygon
         """
         if not isinstance(polygons_list, list):
-            raise TypeError('Given polygon_list should be a list.')
+            raise TypeError("Given polygon_list should be a list.")
 
         if len(polygons_list) == 0:
-            raise ValueError('Given polygon_list is empty.')
+            raise ValueError("Given polygon_list is empty.")
 
-        if not all(isinstance(polygons, Polygons) for polygons in polygons_list):
+        if not all(
+            isinstance(polygons, Polygons) for polygons in polygons_list
+        ):
             raise TypeError(
-                'All type of elements in polygon_list must be Polygon.')
+                "All type of elements in polygon_list must be Polygon."
+            )
 
         _polygons = []
         for polys in polygons_list:

@@ -1,14 +1,10 @@
 import shutil
 from pathlib import Path
-from typing import Union
 
-__all__ = ['Path', 'get_curdir', 'rm_path']
+__all__ = ["Path", "get_curdir", "rm_path"]
 
 
-def get_curdir(
-    path: Union[str, Path],
-    absolute: bool = True
-) -> Path:
+def get_curdir(path: str | Path, absolute: bool = True) -> Path:
     """
     Function to get the path of current workspace.
 
@@ -23,15 +19,15 @@ def get_curdir(
     return path.parent.resolve() if absolute else path.parent
 
 
-def rm_path(path: Union[str, Path]):
+def rm_path(path: str | Path):
     pth = Path(path)
-    if pth.is_dir():
-        pth.rmdir()
-    else:
-        pth.unlink()
+    if pth.is_dir() and not pth.is_symlink():
+        shutil.rmtree(pth)
+        return
+    pth.unlink()
 
 
-def copy_path(path_src: Union[str, Path], path_dst: Union[str, Path]):
+def copy_path(path_src: str | Path, path_dst: str | Path):
     if not Path(path_src).is_file():
         raise ValueError(f'Input path: "{path_src}" is invaild.')
     shutil.copy(path_src, path_dst)

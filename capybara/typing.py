@@ -1,5 +1,3 @@
-from typing import Union
-
 import numpy as np
 
-_Number = Union[np.number, int, float]
+_Number = np.number | int | float

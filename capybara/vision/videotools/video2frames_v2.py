@@ -1,6 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from itertools import chain
-from typing import Any, List
+from typing import Any
 
 import cv2
 import numpy as np
@@ -15,7 +15,9 @@ def is_numpy_img(x: Any) -> bool:
     """
     x == ndarray (H x W x C)
     """
-    return isinstance(x, np.ndarray) and (x.ndim == 2 or (x.ndim == 3 and x.shape[-1] in [1, 3]))
+    return isinstance(x, np.ndarray) and (
+        x.ndim == 2 or (x.ndim == 3 and x.shape[-1] in [1, 3])
+    )
 
 
 def flatten_list(xs: list) -> list:
@@ -38,18 +40,26 @@ def flatten_list(xs: list) -> list:
 def get_step_inds(start: int, end: int, num: int):
     if num > (end - start):
         raise ValueError("num is larger than the number of total frames.")
-    return np.around(np.linspace(start=start, stop=end, num=num, endpoint=False)).astype(int).tolist()
+    return (
+        np.around(np.linspace(start=start, stop=end, num=num, endpoint=False))
+        .astype(int)
+        .tolist()
+    )
 
 
 def _extract_frames(
-    inds: List[int], video_path: str, max_size: int = 1920, color_base: str = "BGR", global_ind: int = 0
+    inds: list[int],
+    video_path: str | Any,
+    max_size: int = 1920,
+    color_base: str = "BGR",
+    global_ind: int = 0,
 ):
     # check video path
     if not is_video_file(video_path):
         raise TypeError(f"The video_path {video_path} is inappropriate.")
 
     # open cap
-    cap = cv2.VideoCapture(video_path)
+    cap = cv2.VideoCapture(str(video_path))
     # if start or end isn't specified lets assume 0
     start = inds[0]
     end = inds[-1] + 1
@@ -62,7 +72,9 @@ def _extract_frames(
         if scale < 1:
             frame = imresize(frame, (dst_h, dst_w))
         elif scale > 1:
-            frame = imresize(frame, (dst_h, dst_w), interpolation=cv2.INTER_AREA)
+            frame = imresize(
+                frame, (dst_h, dst_w), interpolation=cv2.INTER_LINEAR
+            )
 
         if color_base.upper() != "BGR":
             frame = imcvtcolor(frame, cvt_mode=f"BGR2{color_base}")
@@ -87,14 +99,14 @@ def _extract_frames(
 
 
 def video2frames_v2(
-    video_path: str,
-    frame_per_sec: int = None,
+    video_path: str | Any,
+    frame_per_sec: int | None = None,
     start_sec: float = 0,
-    end_sec: float = None,
+    end_sec: float | None = None,
     n_threads: int = 8,
     max_size: int = 1920,
     color_base: str = "BGR",
-) -> List[np.ndarray]:
+) -> list[np.ndarray]:
     """
     Extracts the frames from a video using ray
     Inputs:
@@ -129,7 +141,13 @@ def video2frames_v2(
     if total_frames == 0 or fps == 0:
         return []
 
-    frame_per_sec = fps if frame_per_sec is None else frame_per_sec
+    n_threads = int(n_threads)
+    if n_threads < 1:
+        raise ValueError("n_threads must be >= 1.")
+
+    frame_per_sec = fps if frame_per_sec is None else int(frame_per_sec)
+    if frame_per_sec <= 0:
+        raise ValueError("frame_per_sec must be > 0.")
     total_sec = total_frames / fps
     # get frame inds
     end_sec = total_sec if end_sec is None or end_sec > total_sec else end_sec
@@ -140,19 +158,29 @@ def video2frames_v2(
     start_frame = round(start_sec * fps)
     end_frame = round(end_sec * fps)
     num = round(total_sec * frame_per_sec)
+    if num <= 0:
+        return []
     frame_inds = get_step_inds(start_frame, end_frame, num)
+    if not frame_inds:  # pragma: no cover
+        return []
 
     out_frames = []
-    with ThreadPoolExecutor(max_workers=n_threads) as executor:
+    worker_count = min(n_threads, len(frame_inds))
+    chunk_size = max(1, (len(frame_inds) + worker_count - 1) // worker_count)
+    frame_inds_list = [
+        frame_inds[i : i + chunk_size]
+        for i in range(0, len(frame_inds), chunk_size)
+    ]
+
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
         ## -----start process---- ##
-        # split the frames into chunk lists
-        divide_size = round(len(frame_inds) / n_threads) + 1
-        frame_inds_list = [frame_inds[i * divide_size : (i + 1) * divide_size] for i in range(n_threads)]
         future_to_frames = {
-            executor.submit(_extract_frames, inds, video_path, max_size, color_base, i): inds
+            executor.submit(
+                _extract_frames, inds, video_path, max_size, color_base, i
+            ): inds
             for i, inds in enumerate(frame_inds_list)
         }
-        out_frames = [[] for _ in range(n_threads)]
+        out_frames = [[] for _ in range(len(frame_inds_list))]
 
         for future in as_completed(future_to_frames):
             frames = future_to_frames[future]

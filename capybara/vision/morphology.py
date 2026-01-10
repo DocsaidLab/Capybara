@@ -1,20 +1,23 @@
-from typing import Tuple, Union
-
 import cv2
 import numpy as np
 
 from ..enums import MORPH
 
 __all__ = [
-    'imerode', 'imdilate', 'imopen', 'imclose',
-    'imgradient', 'imtophat', 'imblackhat',
+    "imblackhat",
+    "imclose",
+    "imdilate",
+    "imerode",
+    "imgradient",
+    "imopen",
+    "imtophat",
 ]
 
 
 def imerode(
     img: np.ndarray,
-    ksize: Union[int, Tuple[int, int]] = (3, 3),
-    kstruct: Union[str, int, MORPH] = MORPH.RECT
+    ksize: int | tuple[int, int] = (3, 3),
+    kstruct: str | int | MORPH = MORPH.RECT,
 ) -> np.ndarray:
     """
     Erosion:
@@ -33,9 +36,9 @@ def imerode(
             MORPH.ELLIPSE}, Defaults to MORPH.RECT.
     """
     if isinstance(ksize, int):
-        ksize = (ksize, ) * 2
+        ksize = (ksize, ksize)
     elif not isinstance(ksize, tuple) or len(ksize) != 2:
-        raise TypeError(f'Got inappropriate type or shape of size. {ksize}.')
+        raise TypeError(f"Got inappropriate type or shape of size. {ksize}.")
 
     kstruct = MORPH.obj_to_enum(kstruct)
 
@@ -44,8 +47,8 @@ def imerode(
 
 def imdilate(
     img: np.ndarray,
-    ksize: Union[int, Tuple[int, int]] = (3, 3),
-    kstruct: Union[str, int, MORPH] = MORPH.RECT
+    ksize: int | tuple[int, int] = (3, 3),
+    kstruct: str | int | MORPH = MORPH.RECT,
 ) -> np.ndarray:
     """
     Dilation:
@@ -64,9 +67,9 @@ def imdilate(
             MORPH.ELLIPSE}, Defaults to MORPH.RECT.
     """
     if isinstance(ksize, int):
-        ksize = (ksize, ) * 2
+        ksize = (ksize, ksize)
     elif not isinstance(ksize, tuple) or len(ksize) != 2:
-        raise TypeError(f'Got inappropriate type or shape of size. {ksize}.')
+        raise TypeError(f"Got inappropriate type or shape of size. {ksize}.")
 
     kstruct = MORPH.obj_to_enum(kstruct)
 
@@ -75,8 +78,8 @@ def imdilate(
 
 def imopen(
     img: np.ndarray,
-    ksize: Union[int, Tuple[int, int]] = (3, 3),
-    kstruct: Union[str, int, MORPH] = MORPH.RECT
+    ksize: int | tuple[int, int] = (3, 3),
+    kstruct: str | int | MORPH = MORPH.RECT,
 ) -> np.ndarray:
     """
     Opening:
@@ -93,19 +96,21 @@ def imopen(
             MORPH.ELLIPSE}, Defaults to MORPH.RECT.
     """
     if isinstance(ksize, int):
-        ksize = (ksize, ) * 2
+        ksize = (ksize, ksize)
     elif not isinstance(ksize, tuple) or len(ksize) != 2:
-        raise TypeError(f'Got inappropriate type or shape of size. {ksize}.')
+        raise TypeError(f"Got inappropriate type or shape of size. {ksize}.")
 
     kstruct = MORPH.obj_to_enum(kstruct)
 
-    return cv2.morphologyEx(img, cv2.MORPH_OPEN, cv2.getStructuringElement(kstruct, ksize))
+    return cv2.morphologyEx(
+        img, cv2.MORPH_OPEN, cv2.getStructuringElement(kstruct, ksize)
+    )
 
 
 def imclose(
     img: np.ndarray,
-    ksize: Union[int, Tuple[int, int]] = (3, 3),
-    kstruct: Union[str, int, MORPH] = MORPH.RECT
+    ksize: int | tuple[int, int] = (3, 3),
+    kstruct: str | int | MORPH = MORPH.RECT,
 ) -> np.ndarray:
     """
     Closing:
@@ -123,19 +128,21 @@ def imclose(
             MORPH.ELLIPSE}, Defaults to MORPH.RECT.
     """
     if isinstance(ksize, int):
-        ksize = (ksize, ) * 2
+        ksize = (ksize, ksize)
     elif not isinstance(ksize, tuple) or len(ksize) != 2:
-        raise TypeError(f'Got inappropriate type or shape of size. {ksize}.')
+        raise TypeError(f"Got inappropriate type or shape of size. {ksize}.")
 
     kstruct = MORPH.obj_to_enum(kstruct)
 
-    return cv2.morphologyEx(img, cv2.MORPH_CLOSE, cv2.getStructuringElement(kstruct, ksize))
+    return cv2.morphologyEx(
+        img, cv2.MORPH_CLOSE, cv2.getStructuringElement(kstruct, ksize)
+    )
 
 
 def imgradient(
     img: np.ndarray,
-    ksize: Union[int, Tuple[int, int]] = (3, 3),
-    kstruct: Union[str, int, MORPH] = MORPH.RECT
+    ksize: int | tuple[int, int] = (3, 3),
+    kstruct: str | int | MORPH = MORPH.RECT,
 ) -> np.ndarray:
     """
     Morphological Gradient:
@@ -151,19 +158,21 @@ def imgradient(
             MORPH.ELLIPSE}, Defaults to MORPH.RECT.
     """
     if isinstance(ksize, int):
-        ksize = (ksize, ) * 2
+        ksize = (ksize, ksize)
     elif not isinstance(ksize, tuple) or len(ksize) != 2:
-        raise TypeError(f'Got inappropriate type or shape of size. {ksize}.')
+        raise TypeError(f"Got inappropriate type or shape of size. {ksize}.")
 
     kstruct = MORPH.obj_to_enum(kstruct)
 
-    return cv2.morphologyEx(img, cv2.MORPH_GRADIENT, cv2.getStructuringElement(kstruct, ksize))
+    return cv2.morphologyEx(
+        img, cv2.MORPH_GRADIENT, cv2.getStructuringElement(kstruct, ksize)
+    )
 
 
 def imtophat(
     img: np.ndarray,
-    ksize: Union[int, Tuple[int, int]] = (3, 3),
-    kstruct: Union[str, int, MORPH] = MORPH.RECT
+    ksize: int | tuple[int, int] = (3, 3),
+    kstruct: str | int | MORPH = MORPH.RECT,
 ) -> np.ndarray:
     """
     Top Hat:
@@ -179,19 +188,21 @@ def imtophat(
             MORPH.ELLIPSE}, Defaults to MORPH.RECT.
     """
     if isinstance(ksize, int):
-        ksize = (ksize, ) * 2
+        ksize = (ksize, ksize)
     elif not isinstance(ksize, tuple) or len(ksize) != 2:
-        raise TypeError(f'Got inappropriate type or shape of size. {ksize}.')
+        raise TypeError(f"Got inappropriate type or shape of size. {ksize}.")
 
     kstruct = MORPH.obj_to_enum(kstruct)
 
-    return cv2.morphologyEx(img, cv2.MORPH_TOPHAT, cv2.getStructuringElement(kstruct, ksize))
+    return cv2.morphologyEx(
+        img, cv2.MORPH_TOPHAT, cv2.getStructuringElement(kstruct, ksize)
+    )
 
 
 def imblackhat(
     img: np.ndarray,
-    ksize: Union[int, Tuple[int, int]] = (3, 3),
-    kstruct: Union[str, int, MORPH] = MORPH.RECT
+    ksize: int | tuple[int, int] = (3, 3),
+    kstruct: str | int | MORPH = MORPH.RECT,
 ):
     """
     Black Hat:
@@ -207,10 +218,12 @@ def imblackhat(
             MORPH.ELLIPSE}, Defaults to MORPH.RECT.
     """
     if isinstance(ksize, int):
-        ksize = (ksize, ) * 2
+        ksize = (ksize, ksize)
     elif not isinstance(ksize, tuple) or len(ksize) != 2:
-        raise TypeError(f'Got inappropriate type or shape of size. {ksize}.')
+        raise TypeError(f"Got inappropriate type or shape of size. {ksize}.")
 
     kstruct = MORPH.obj_to_enum(kstruct)
 
-    return cv2.morphologyEx(img, cv2.MORPH_BLACKHAT, cv2.getStructuringElement(kstruct, ksize))
+    return cv2.morphologyEx(
+        img, cv2.MORPH_BLACKHAT, cv2.getStructuringElement(kstruct, ksize)
+    )
