@@ -1,10 +1,24 @@
+from typing import Any
+
 import cv2
 import numpy as np
 import pytest
 
-from capybara import (BORDER, Box, Boxes, gaussianblur, imbinarize, imcropbox,
-                      imcropboxes, imcvtcolor, imresize_and_pad_if_need,
-                      meanblur, medianblur, pad)
+from capybara import (
+    BORDER,
+    Box,
+    Boxes,
+    gaussianblur,
+    imbinarize,
+    imcropbox,
+    imcropboxes,
+    imcvtcolor,
+    imresize_and_pad_if_need,
+    meanblur,
+    medianblur,
+    pad,
+)
+from capybara.vision.functionals import centercrop, imadjust
 
 
 def test_meanblur():
@@ -31,8 +45,8 @@ def test_gaussianblur():
 
     # 測試指定ksize和sigmaX
     ksize = (7, 7)
-    sigmaX = 1
-    blurred_img_custom = gaussianblur(img, ksize=ksize, sigmaX=sigmaX)
+    sigma_x = 1
+    blurred_img_custom = gaussianblur(img, ksize=ksize, sigma_x=sigma_x)
     assert blurred_img_custom.shape == img.shape
 
 
@@ -55,16 +69,24 @@ def test_imcvtcolor():
     img = np.random.randint(0, 256, size=(100, 100, 3), dtype=np.uint8)
 
     # 測試RGB轉灰階
-    gray_img = imcvtcolor(img, 'RGB2GRAY')
+    gray_img = imcvtcolor(img, "RGB2GRAY")
     assert gray_img.shape == (100, 100)
 
+    # 支援 OpenCV 的 COLOR_ 前綴寫法
+    gray_img_prefixed = imcvtcolor(img, "COLOR_RGB2GRAY")
+    assert gray_img_prefixed.shape == (100, 100)
+
+    # 支援直接傳入 OpenCV 的 conversion code
+    gray_img2 = imcvtcolor(img, cv2.COLOR_RGB2GRAY)
+    assert gray_img2.shape == (100, 100)
+
     # 測試RGB轉BGR
-    bgr_img = imcvtcolor(img, 'RGB2BGR')
+    bgr_img = imcvtcolor(img, "RGB2BGR")
     assert bgr_img.shape == img.shape
 
     # 測試轉換為不支援的色彩空間
     with pytest.raises(ValueError):
-        imcvtcolor(img, 'RGB2WWW')  # XYZ為不支援的色彩空間
+        imcvtcolor(img, "RGB2WWW")  # XYZ為不支援的色彩空間
 
 
 def test_pad_constant_gray():
@@ -76,11 +98,20 @@ def test_pad_constant_gray():
     pad_value = 128
     padded_img = pad(img, pad_size=pad_size, pad_value=pad_value)
     assert padded_img.shape == (
-        img.shape[0] + 2 * pad_size, img.shape[1] + 2 * pad_size)
+        img.shape[0] + 2 * pad_size,
+        img.shape[1] + 2 * pad_size,
+    )
     assert np.all(padded_img[:pad_size, :] == pad_value)
     assert np.all(padded_img[-pad_size:, :] == pad_value)
     assert np.all(padded_img[:, :pad_size] == pad_value)
     assert np.all(padded_img[:, -pad_size:] == pad_value)
+
+
+def test_pad_constant_gray_accepts_singleton_tuple_pad_value():
+    img = np.random.randint(0, 256, size=(10, 10), dtype=np.uint8)
+    padded_img = pad(img, pad_size=1, pad_value=(123,))
+    assert padded_img.shape == (12, 12)
+    assert int(padded_img[0, 0]) == 123
 
 
 def test_pad_constant_color():
@@ -92,11 +123,24 @@ def test_pad_constant_color():
     pad_value = (255, 0, 0)  # 紅色
     padded_img = pad(img, pad_size=pad_size, pad_value=pad_value)
     assert padded_img.shape == (
-        img.shape[0] + 2 * pad_size, img.shape[1] + 2 * pad_size, img.shape[2])
+        img.shape[0] + 2 * pad_size,
+        img.shape[1] + 2 * pad_size,
+        img.shape[2],
+    )
     assert np.all(padded_img[:pad_size, :, :] == pad_value)
     assert np.all(padded_img[-pad_size:, :, :] == pad_value)
     assert np.all(padded_img[:, :pad_size, :] == pad_value)
     assert np.all(padded_img[:, -pad_size:, :] == pad_value)
+
+
+def test_pad_rejects_invalid_pad_value_type_and_invalid_image_ndim():
+    img = np.random.randint(0, 256, size=(10, 10, 3), dtype=np.uint8)
+    with pytest.raises(ValueError, match="pad_value must be"):
+        pad(img, pad_size=1, pad_value=[1, 2, 3])  # type: ignore[arg-type]
+
+    bad = np.zeros((1, 2, 3, 4), dtype=np.uint8)
+    with pytest.raises(ValueError, match="img must be a 2D or 3D"):
+        pad(bad, pad_size=1, pad_value=0)
 
 
 def test_pad_replicate():
@@ -107,7 +151,10 @@ def test_pad_replicate():
     pad_size = (5, 10)
     padded_img = pad(img, pad_size=pad_size, pad_mode=BORDER.REPLICATE)
     assert padded_img.shape == (
-        img.shape[0] + 2 * pad_size[0], img.shape[1] + 2 * pad_size[1], img.shape[2])
+        img.shape[0] + 2 * pad_size[0],
+        img.shape[1] + 2 * pad_size[1],
+        img.shape[2],
+    )
 
 
 def test_pad_reflect():
@@ -120,7 +167,7 @@ def test_pad_reflect():
     assert padded_img.shape == (
         img.shape[0] + pad_size[0] + pad_size[1],
         img.shape[1] + pad_size[2] + pad_size[3],
-        img.shape[2]
+        img.shape[2],
     )
 
 
@@ -128,12 +175,13 @@ def test_pad_invalid_input():
     # 測試不支援的填充模式
     img = np.random.randint(0, 256, size=(100, 100, 3), dtype=np.uint8)
     with pytest.raises(ValueError):
-        pad(img, pad_size=5, pad_mode='invalid_mode')
+        pad(img, pad_size=5, pad_mode="invalid_mode")
 
     # 測試不合法的填充大小
     img = np.random.randint(0, 256, size=(100, 100, 3), dtype=np.uint8)
     with pytest.raises(ValueError):
-        pad(img, pad_size=(10, 20, 30))
+        pad_size: Any = (10, 20, 30)
+        pad(img, pad_size=pad_size)
 
 
 def test_imcropbox_custom_box():
@@ -170,7 +218,8 @@ def test_imcropbox_invalid_input():
     # 測試不支援的裁剪區域
     img = np.random.randint(0, 256, size=(100, 100, 3), dtype=np.uint8)
     with pytest.raises(TypeError):
-        imcropbox(img, "invalid_box")
+        invalid_box: Any = "invalid_box"
+        imcropbox(img, invalid_box)
 
     # 測試不合法的裁剪區域
     img = np.random.randint(0, 256, size=(100, 100, 3), dtype=np.uint8)
@@ -240,7 +289,8 @@ def test_imcropboxes_invalid_input():
     # 測試不支援的裁剪區域
     img = np.random.randint(0, 256, size=(100, 100, 3), dtype=np.uint8)
     with pytest.raises(TypeError):
-        imcropboxes(img, "invalid_boxes")
+        invalid_boxes: Any = "invalid_boxes"
+        imcropboxes(img, invalid_boxes)
 
     # 測試不合法的裁剪區域
     img = np.random.randint(0, 256, size=(100, 100, 3), dtype=np.uint8)
@@ -286,18 +336,84 @@ def test_imbinarize_invalid_input():
 
 
 def test_imresize_and_pad_if_need():
-    img = np.ones((150, 120, 3), dtype='uint8')
+    img = np.ones((150, 120, 3), dtype="uint8")
     processed = imresize_and_pad_if_need(img, 150, 150)
-    np.testing.assert_allclose(processed[:, 120:], np.zeros((150, 30, 3), dtype='uint8'))
-    
-    img = np.ones((151, 119, 3), dtype='uint8')
+    np.testing.assert_allclose(
+        processed[:, 120:], np.zeros((150, 30, 3), dtype="uint8")
+    )
+
+    img = np.ones((151, 119, 3), dtype="uint8")
     processed = imresize_and_pad_if_need(img, 150, 150)
-    np.testing.assert_allclose(processed[:, 120:], np.zeros((150, 30, 3), dtype='uint8'))
+    np.testing.assert_allclose(
+        processed[:, 120:], np.zeros((150, 30, 3), dtype="uint8")
+    )
 
-    img = np.ones((200, 100, 3), dtype='uint8')
+    img = np.ones((200, 100, 3), dtype="uint8")
     processed = imresize_and_pad_if_need(img, 100, 100)
-    np.testing.assert_allclose(processed[:, 50:], np.zeros((100, 50, 3), dtype='uint8'))
+    np.testing.assert_allclose(
+        processed[:, 50:], np.zeros((100, 50, 3), dtype="uint8")
+    )
 
-    img = np.ones((20, 20, 3), dtype='uint8')
+    img = np.ones((20, 20, 3), dtype="uint8")
     processed = imresize_and_pad_if_need(img, 100, 100)
-    np.testing.assert_allclose(processed, np.ones((100, 100, 3), dtype='uint8'))
+    np.testing.assert_allclose(processed, np.ones((100, 100, 3), dtype="uint8"))
+
+
+def test_blur_accepts_numpy_scalar_ksize_and_rejects_invalid_ksize():
+    img = np.random.randint(0, 256, size=(20, 20, 3), dtype=np.uint8)
+    out = meanblur(img, ksize=np.array(3))
+    assert out.shape == img.shape
+    out2 = gaussianblur(img, ksize=np.array(5))
+    assert out2.shape == img.shape
+
+    with pytest.raises(TypeError, match="ksize"):
+        meanblur(img, ksize=(1, 2, 3))  # type: ignore[arg-type]
+
+
+def test_pad_accepts_none_pad_value_and_validates_pad_value_types():
+    img = np.zeros((3, 3, 3), dtype=np.uint8)
+    padded = pad(img, pad_size=1, pad_value=None)
+    assert padded.shape == (5, 5, 3)
+    assert np.all(padded[0] == 0)
+
+    with pytest.raises(ValueError, match="pad_value"):
+        invalid_pad_value: Any = (1, 2)
+        pad(img, pad_size=1, pad_value=invalid_pad_value)
+
+    gray = np.zeros((3, 3), dtype=np.uint8)
+    with pytest.raises(ValueError, match="must be an int"):
+        pad(gray, pad_size=1, pad_value=(1, 2, 3))
+
+
+def test_centercrop_produces_square_crop():
+    img = np.zeros((10, 20, 3), dtype=np.uint8)
+    cropped = centercrop(img)
+    assert cropped.shape == (10, 10, 3)
+
+
+def test_imadjust_returns_input_when_bounds_degenerate():
+    img = np.zeros((20, 20), dtype=np.uint8)
+    out = imadjust(img)
+    assert np.array_equal(out, img)
+
+
+def test_imadjust_stretches_grayscale_and_color_images():
+    gray = np.tile(np.arange(256, dtype=np.uint8), (4, 1))
+    out = imadjust(gray)
+    assert out.shape == gray.shape
+    assert out.dtype == np.uint8
+    assert out.min() == 0
+    assert out.max() == 255
+    assert not np.array_equal(out, gray)
+
+    bgr = np.stack([gray] * 3, axis=-1)
+    out2 = imadjust(bgr)
+    assert out2.shape == bgr.shape
+    assert out2.dtype == np.uint8
+
+
+def test_imresize_and_pad_if_need_can_return_scale():
+    img = np.ones((200, 100, 3), dtype=np.uint8)
+    out, scale = imresize_and_pad_if_need(img, 100, 100, return_scale=True)
+    assert out.shape == (100, 100, 3)
+    assert scale == pytest.approx(0.5)
