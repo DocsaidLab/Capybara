@@ -1,0 +1,7 @@
+{
+  "include": ["capybara", "tests"],
+  "exclude": ["tmp", "capybara/cpuinfo.py"],
+  "pythonVersion": "3.10",
+  "typeCheckingMode": "basic",
+  "reportMissingTypeStubs": false
+}

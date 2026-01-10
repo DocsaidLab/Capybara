@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   qa:
-    name: QA (ruff + pytest)
+    name: QA (ruff + pyright + pytest)
     runs-on: [self-hosted, unicorn]
     timeout-minutes: 45
     permissions:
@@ -28,9 +28,10 @@ jobs:
       REPORT_DIR: .ci-reports
       PYTEST_REPORT_DIR: .ci-reports/pytest/raw
       RUFF_REPORT_DIR: .ci-reports/ruff
-      COVERAGE_MIN_LINE: "0.00"
+      PYRIGHT_REPORT_DIR: .ci-reports/pyright
+      COVERAGE_MIN_LINE: "0.99"
       COVERAGE_MIN_BRANCH: "0.00"
-      COVERAGE_ENFORCE: "0"
+      COVERAGE_ENFORCE: "1"
       ARTIFACT_RETENTION_DAYS: 14
     steps:
       - name: Checkout repository
@@ -50,13 +51,14 @@ jobs:
           python -m pip install --upgrade pip wheel
           python -m pip install torch --index-url "$PYTORCH_INDEX_URL"
           python -m pip install -e .
-          python -m pip install pytest pytest-cov pytest-html coverage ruff
+          python -m pip install pytest pytest-cov pytest-html coverage ruff pyright onnx onnxslim
 
       - name: Prepare report directories
         run: |
           mkdir -p "$REPORT_DIR"
           mkdir -p "$PYTEST_REPORT_DIR"
           mkdir -p "$RUFF_REPORT_DIR"
+          mkdir -p "$PYRIGHT_REPORT_DIR"
 
       - name: Ruff - Lint
         id: ruff_lint
@@ -78,6 +80,19 @@ jobs:
           set -o pipefail
           set +e
           python -m ruff format --check capybara tests | tee "$RUFF_REPORT_DIR/format.log"
+          status=${PIPESTATUS[0]}
+          set -e
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          exit $status
+
+      - name: Pyright
+        id: pyright
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          set +e
+          python -m pyright --version
+          python -m pyright | tee "$PYRIGHT_REPORT_DIR/pyright.log"
           status=${PIPESTATUS[0]}
           set -e
           echo "exit_code=$status" >> "$GITHUB_OUTPUT"
@@ -379,6 +394,7 @@ jobs:
           failed=0
           ruff_lint_exit="${{ steps.ruff_lint.outputs.exit_code || '0' }}"
           ruff_format_exit="${{ steps.ruff_format.outputs.exit_code || '0' }}"
+          pyright_exit="${{ steps.pyright.outputs.exit_code || '0' }}"
           pytest_exit="${{ steps.pytest.outputs.exit_code || '0' }}"
           coverage_gate_exit="${{ steps.coverage_gate.outputs.exit_code || '0' }}"
 
@@ -388,6 +404,10 @@ jobs:
           fi
           if [[ "$ruff_format_exit" -ne 0 ]]; then
             echo "::error::Ruff Format failed"
+            failed=1
+          fi
+          if [[ "$pyright_exit" -ne 0 ]]; then
+            echo "::error::Pyright failed"
             failed=1
           fi
           if [[ "$pytest_exit" -ne 0 ]]; then
