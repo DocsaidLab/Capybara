@@ -21,8 +21,8 @@ RUN ln -s /usr/bin/python3 /usr/bin/python && \
     python -m pip install --no-cache-dir -U pip setuptools wheel
 
 COPY . /usr/local/Capybara
-RUN cd /usr/local/Capybara && python setup.py bdist_wheel && \
-    python -m pip install dist/*.whl && rm -rf /usr/local/Capybara
+RUN python -m pip install --no-cache-dir /usr/local/Capybara && \
+    rm -rf /usr/local/Capybara
 
 # Preload data
 RUN python -c "import capybara"
