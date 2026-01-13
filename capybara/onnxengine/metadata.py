@@ -1,48 +1,73 @@
+from __future__ import annotations
+
 import json
-from typing import Union
+from pathlib import Path
+from typing import Any
 
 import onnx
-import onnxruntime as ort
 
-from ..utils import Path, now
+from ..utils.time import now
+
+try:  # pragma: no cover - optional dependency
+    import onnxruntime as ort  # type: ignore
+except Exception:  # pragma: no cover - handled lazily
+    ort = None  # type: ignore[assignment]
 
 
-def get_onnx_metadata(
-    onnx_path: Union[str, Path],
-) -> dict:
-    onnx_path = str(onnx_path)
-    sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
-    metadata = sess.get_modelmeta().custom_metadata_map
-    del sess
-    return metadata
+def _require_ort():
+    if ort is None:  # pragma: no cover - depends on optional dep
+        raise ImportError(
+            "onnxruntime is required to read/write ONNX metadata. "
+            "Install 'onnxruntime' or 'onnxruntime-gpu'."
+        )
+    return ort
+
+
+def get_onnx_metadata(onnx_path: str | Path) -> dict[str, Any]:
+    ort_mod = _require_ort()
+    sess = ort_mod.InferenceSession(
+        str(onnx_path), providers=["CPUExecutionProvider"]
+    )
+    try:
+        custom = sess.get_modelmeta().custom_metadata_map
+        return dict(custom)
+    finally:
+        del sess
 
 
 def write_metadata_into_onnx(
-    onnx_path: Union[str, Path],
-    out_path: Union[str, Path],
+    onnx_path: str | Path,
+    out_path: str | Path,
     drop_old_meta: bool = False,
-    **kwargs,
-):
-    onnx_path = str(onnx_path)
-    onnx_model = onnx.load(onnx_path)
-    meta_data = parse_metadata_from_onnx(onnx_path) if not drop_old_meta else {}
+    **kwargs: Any,
+) -> None:
+    onnx_model = onnx.load(str(onnx_path))
+    meta_data: dict[str, Any] = (
+        {} if drop_old_meta else parse_metadata_from_onnx(onnx_path)
+    )
 
     meta_data.update({"Date": now(fmt="%Y-%m-%d %H:%M:%S"), **kwargs})
 
     onnx.helper.set_model_props(
         onnx_model,
-        {k: json.dumps(v) for k, v in meta_data.items()},
+        {str(k): json.dumps(v) for k, v in meta_data.items()},
     )
-    onnx.save(onnx_model, out_path)
+    onnx.save(onnx_model, str(out_path))
 
 
-def parse_metadata_from_onnx(
-    onnx_path: Union[str, Path],
-) -> dict:
-    onnx_path = str(onnx_path)
-    sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
-    metadata = {
-        k: json.loads(v) for k, v in sess.get_modelmeta().custom_metadata_map.items()
-    }
-    del sess
-    return metadata
+def parse_metadata_from_onnx(onnx_path: str | Path) -> dict[str, Any]:
+    ort_mod = _require_ort()
+    sess = ort_mod.InferenceSession(
+        str(onnx_path), providers=["CPUExecutionProvider"]
+    )
+    try:
+        metadata_map = sess.get_modelmeta().custom_metadata_map
+        parsed: dict[str, Any] = {}
+        for key, raw in metadata_map.items():
+            if isinstance(raw, str):
+                parsed[key] = json.loads(raw)
+            else:
+                parsed[key] = raw
+        return parsed
+    finally:
+        del sess

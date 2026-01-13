@@ -1,6 +1,9 @@
+import os
+import tempfile
 import warnings
+from contextlib import suppress
 from pathlib import Path
-from typing import Any, List, Union
+from typing import Any, cast
 
 import cv2
 import numpy as np
@@ -15,27 +18,27 @@ from .functionals import imcvtcolor
 from .geometric import imrotate90
 
 __all__ = [
-    "imread",
-    "imwrite",
-    "imencode",
+    "b64_to_img",
+    "b64_to_npy",
+    "b64str_to_img",
+    "b64str_to_npy",
+    "get_orientation_code",
     "imdecode",
+    "imencode",
     "img_to_b64",
     "img_to_b64str",
-    "b64_to_img",
-    "b64str_to_img",
-    "b64_to_npy",
-    "b64str_to_npy",
+    "imread",
+    "imwrite",
+    "is_numpy_img",
+    "jpgdecode",
+    "jpgencode",
+    "jpgread",
     "npy_to_b64",
     "npy_to_b64str",
     "npyread",
     "pdf2imgs",
-    "jpgencode",
-    "jpgdecode",
-    "jpgread",
-    "pngencode",
     "pngdecode",
-    "is_numpy_img",
-    "get_orientation_code",
+    "pngencode",
 ]
 
 jpeg = TurboJPEG()
@@ -45,47 +48,52 @@ def is_numpy_img(x: Any) -> bool:
     """
     x == ndarray (H x W x C)
     """
-    return isinstance(x, np.ndarray) and (x.ndim == 2 or (x.ndim == 3 and x.shape[-1] in [1, 3]))
+    return isinstance(x, np.ndarray) and (
+        x.ndim == 2 or (x.ndim == 3 and x.shape[-1] in [1, 3])
+    )
 
 
-def get_orientation_code(stream: Union[str, Path, bytes]):
-    code = None
+def get_orientation_code(stream: str | Path | bytes):
     try:
         exif_dict = piexif.load(stream)
-        if piexif.ImageIFD.Orientation in exif_dict["0th"]:
-            orientation = exif_dict["0th"][piexif.ImageIFD.Orientation]
-            if orientation == 3:
-                code = ROTATE.ROTATE_180
-            elif orientation == 6:
-                code = ROTATE.ROTATE_90
-            elif orientation == 8:
-                code = ROTATE.ROTATE_270
-    finally:
-        return code
+    except Exception:
+        return None
+
+    orientation = exif_dict.get("0th", {}).get(piexif.ImageIFD.Orientation)
+    if orientation == 3:
+        return ROTATE.ROTATE_180
+    if orientation == 6:
+        return ROTATE.ROTATE_90
+    if orientation == 8:
+        return ROTATE.ROTATE_270
+    return None
 
 
-def jpgencode(img: np.ndarray, quality: int = 90) -> Union[bytes, None]:
+def jpgencode(img: np.ndarray, quality: int = 90) -> bytes | None:
     byte_ = None
     if is_numpy_img(img):
-        try:
-            byte_ = jpeg.encode(img, quality=quality)
-        except Exception as _:
-            pass
+        with suppress(Exception):
+            encoded = jpeg.encode(img, quality=quality)
+            if isinstance(encoded, tuple):
+                encoded = encoded[0]
+            byte_ = cast(bytes, encoded)
     return byte_
 
 
-def jpgdecode(byte_: bytes) -> Union[np.ndarray, None]:
+def jpgdecode(byte_: bytes) -> np.ndarray | None:
     try:
         bgr_array = jpeg.decode(byte_)
         code = get_orientation_code(byte_)
-        bgr_array = imrotate90(bgr_array, code) if code is not None else bgr_array
+        bgr_array = (
+            imrotate90(bgr_array, code) if code is not None else bgr_array
+        )
     except Exception as _:
         bgr_array = None
 
     return bgr_array
 
 
-def jpgread(img_file: Union[str, Path]) -> Union[np.ndarray, None]:
+def jpgread(img_file: str | Path) -> np.ndarray | None:
     with open(str(img_file), "rb") as f:
         binary_img = f.read()
         bgr_array = jpgdecode(binary_img)
@@ -93,17 +101,19 @@ def jpgread(img_file: Union[str, Path]) -> Union[np.ndarray, None]:
     return bgr_array
 
 
-def pngencode(img: np.ndarray, compression: int = 1) -> Union[bytes, None]:
+def pngencode(img: np.ndarray, compression: int = 1) -> bytes | None:
     byte_ = None
     if is_numpy_img(img):
-        try:
-            byte_ = cv2.imencode(".png", img, params=[int(cv2.IMWRITE_PNG_COMPRESSION), compression])[1].tobytes()
-        except Exception as _:
-            pass
+        with suppress(Exception):
+            byte_ = cv2.imencode(
+                ".png",
+                img,
+                params=[int(cv2.IMWRITE_PNG_COMPRESSION), compression],
+            )[1].tobytes()
     return byte_
 
 
-def pngdecode(byte_: bytes) -> Union[np.ndarray, None]:
+def pngdecode(byte_: bytes) -> np.ndarray | None:
     try:
         enc = np.frombuffer(byte_, "uint8")
         img = cv2.imdecode(enc, cv2.IMREAD_COLOR)
@@ -112,14 +122,25 @@ def pngdecode(byte_: bytes) -> Union[np.ndarray, None]:
     return img
 
 
-def imencode(img: np.ndarray, IMGTYP: Union[str, int, IMGTYP] = IMGTYP.JPEG) -> Union[bytes, None]:
-    IMGTYP = IMGTYP.obj_to_enum(IMGTYP)
-    encode_fn = jpgencode if IMGTYP == IMGTYP.JPEG else pngencode
-    byte_ = encode_fn(img)
-    return byte_
+def imencode(
+    img: np.ndarray,
+    imgtyp: str | int | IMGTYP = IMGTYP.JPEG,
+    **kwargs: object,
+) -> bytes | None:
+    if "IMGTYP" in kwargs:
+        if imgtyp != IMGTYP.JPEG:
+            raise TypeError("imgtyp and IMGTYP were both provided.")
+        imgtyp = cast(str | int | IMGTYP, kwargs.pop("IMGTYP"))
+    if kwargs:
+        unexpected = ", ".join(sorted(kwargs))
+        raise TypeError(f"Unexpected keyword arguments: {unexpected}")
+
+    imgtyp_enum = IMGTYP.obj_to_enum(imgtyp)
+    encode_fn = jpgencode if imgtyp_enum == IMGTYP.JPEG else pngencode
+    return encode_fn(img)
 
 
-def imdecode(byte_: bytes) -> Union[np.ndarray, None]:
+def imdecode(byte_: bytes) -> np.ndarray | None:
     try:
         img = jpgdecode(byte_)
         img = pngdecode(byte_) if img is None else img
@@ -128,11 +149,26 @@ def imdecode(byte_: bytes) -> Union[np.ndarray, None]:
     return img
 
 
-def img_to_b64(img: np.ndarray, IMGTYP: Union[str, int, IMGTYP] = IMGTYP.JPEG) -> Union[bytes, None]:
-    IMGTYP = IMGTYP.obj_to_enum(IMGTYP)
-    encode_fn = jpgencode if IMGTYP == IMGTYP.JPEG else pngencode
+def img_to_b64(
+    img: np.ndarray,
+    imgtyp: str | int | IMGTYP = IMGTYP.JPEG,
+    **kwargs: object,
+) -> bytes | None:
+    if "IMGTYP" in kwargs:
+        if imgtyp != IMGTYP.JPEG:
+            raise TypeError("imgtyp and IMGTYP were both provided.")
+        imgtyp = cast(str | int | IMGTYP, kwargs.pop("IMGTYP"))
+    if kwargs:
+        unexpected = ", ".join(sorted(kwargs))
+        raise TypeError(f"Unexpected keyword arguments: {unexpected}")
+
+    imgtyp_enum = IMGTYP.obj_to_enum(imgtyp)
+    encode_fn = jpgencode if imgtyp_enum == IMGTYP.JPEG else pngencode
     try:
-        b64 = pybase64.b64encode(encode_fn(img))
+        encoded = encode_fn(img)
+        if encoded is None:
+            return None
+        b64 = pybase64.b64encode(encoded)
     except Exception as _:
         b64 = None
     return b64
@@ -142,18 +178,23 @@ def npy_to_b64(x: np.ndarray, dtype="float32") -> bytes:
     return pybase64.b64encode(x.astype(dtype).tobytes())
 
 
-def npy_to_b64str(x: np.ndarray, dtype="float32", string_encode: str = "utf-8") -> str:
+def npy_to_b64str(
+    x: np.ndarray, dtype="float32", string_encode: str = "utf-8"
+) -> str:
     return pybase64.b64encode(x.astype(dtype).tobytes()).decode(string_encode)
 
 
 def img_to_b64str(
-    img: np.ndarray, IMGTYP: Union[str, int, IMGTYP] = IMGTYP.JPEG, string_encode: str = "utf-8"
-) -> Union[str, None]:
-    b64 = img_to_b64(img, IMGTYP)
+    img: np.ndarray,
+    imgtyp: str | int | IMGTYP = IMGTYP.JPEG,
+    string_encode: str = "utf-8",
+    **kwargs: object,
+) -> str | None:
+    b64 = img_to_b64(img, imgtyp, **kwargs)
     return b64.decode(string_encode) if isinstance(b64, bytes) else None
 
 
-def b64_to_img(b64: bytes) -> Union[np.ndarray, None]:
+def b64_to_img(b64: bytes) -> np.ndarray | None:
     try:
         img = imdecode(pybase64.b64decode(b64))
     except Exception as _:
@@ -161,9 +202,11 @@ def b64_to_img(b64: bytes) -> Union[np.ndarray, None]:
     return img
 
 
-def b64str_to_img(b64str: Union[str, None], string_encode: str = "utf-8") -> Union[np.ndarray, None]:
+def b64str_to_img(
+    b64str: str | None, string_encode: str = "utf-8"
+) -> np.ndarray | None:
     if b64str is None:
-        warnings.warn("b64str is None.")
+        warnings.warn("b64str is None.", stacklevel=2)
         return None
 
     if not isinstance(b64str, str):
@@ -176,11 +219,15 @@ def b64_to_npy(x: bytes, dtype="float32") -> np.ndarray:
     return np.frombuffer(pybase64.b64decode(x), dtype=dtype)
 
 
-def b64str_to_npy(x: bytes, dtype="float32", string_encode: str = "utf-8") -> np.ndarray:
-    return np.frombuffer(pybase64.b64decode(x.encode(string_encode)), dtype=dtype)
+def b64str_to_npy(
+    x: str, dtype="float32", string_encode: str = "utf-8"
+) -> np.ndarray:
+    return np.frombuffer(
+        pybase64.b64decode(x.encode(string_encode)), dtype=dtype
+    )
 
 
-def npyread(path: Union[str, Path]) -> Union[np.ndarray, None]:
+def npyread(path: str | Path) -> np.ndarray | None:
     try:
         with open(str(path), "rb") as f:
             img = np.load(f)
@@ -189,7 +236,9 @@ def npyread(path: Union[str, Path]) -> Union[np.ndarray, None]:
     return img
 
 
-def imread(path: Union[str, Path], color_base: str = "BGR", verbose: bool = False) -> Union[np.ndarray, None]:
+def imread(
+    path: str | Path, color_base: str = "BGR", verbose: bool = False
+) -> np.ndarray | None:
     """
     This function reads an image from a given file path and converts its color
     base if necessary.
@@ -215,8 +264,12 @@ def imread(path: Union[str, Path], color_base: str = "BGR", verbose: bool = Fals
     if not Path(path).exists():
         raise FileExistsError(f"{path} can not found.")
 
+    color_base = color_base.upper()
+
     if Path(path).suffix.lower() == ".heic":
-        heif_file = pillow_heif.open_heif(str(path), convert_hdr_to_8bit=True, bgr_mode=True)
+        heif_file = pillow_heif.open_heif(
+            str(path), convert_hdr_to_8bit=True, bgr_mode=True
+        )
         img = np.asarray(heif_file)
     else:
         img = jpgread(path)
@@ -224,7 +277,7 @@ def imread(path: Union[str, Path], color_base: str = "BGR", verbose: bool = Fals
 
     if img is None:
         if verbose:
-            warnings.warn("Got a None type image.")
+            warnings.warn("Got a None type image.", stacklevel=2)
         return
 
     if color_base != "BGR":
@@ -235,7 +288,7 @@ def imread(path: Union[str, Path], color_base: str = "BGR", verbose: bool = Fals
 
 def imwrite(
     img: np.ndarray,
-    path: Union[str, Path] = None,
+    path: str | Path | None = None,
     color_base: str = "BGR",
     suffix: str = ".jpg",
 ) -> bool:
@@ -260,10 +313,15 @@ def imwrite(
     color_base = color_base.upper()
     if color_base != "BGR":
         img = imcvtcolor(img, cvt_mode=f"{color_base}2BGR")
-    return cv2.imwrite(str(path) if path else f"tmp{suffix}", img)
+    if path is None:
+        fd, target = tempfile.mkstemp(prefix="capybara_", suffix=suffix)
+        os.close(fd)
+    else:
+        target = str(path)
+    return bool(cv2.imwrite(target, img))
 
 
-def pdf2imgs(stream: Union[str, Path, bytes]) -> Union[List[np.ndarray], None]:
+def pdf2imgs(stream: str | Path | bytes) -> list[np.ndarray] | None:
     """
     Function for converting a PDF document to numpy images.
 
@@ -278,6 +336,8 @@ def pdf2imgs(stream: Union[str, Path, bytes]) -> Union[List[np.ndarray], None]:
             pil_imgs = convert_from_bytes(stream)
         else:
             pil_imgs = convert_from_path(stream)
-        return [imcvtcolor(np.array(img), cvt_mode="RGB2BGR") for img in pil_imgs]
+        return [
+            imcvtcolor(np.array(img), cvt_mode="RGB2BGR") for img in pil_imgs
+        ]
     except Exception as _:
         return

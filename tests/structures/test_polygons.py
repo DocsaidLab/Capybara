@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 import numpy as np
 import pytest
 
@@ -13,45 +15,49 @@ def assert_almost_equal(actual, expected, tolerance=1e-5):
 
 
 tl, bl, br, tr = (0, 0), (0, 1), (1, 1), (1, 0)
-POINTS_SET = np.array([(tl, bl, br, tr),
-                       (tl, bl, tr, br),
-                       (tl, br, bl, tr),
-                       (tl, br, tr, bl),
-                       (tl, tr, bl, br),
-                       (tl, tr, br, bl),
-                       (bl, tl, br, tr),
-                       (bl, tl, tr, br),
-                       (bl, br, tl, tr),
-                       (bl, br, tr, tl),
-                       (bl, tr, tl, br),
-                       (bl, tr, br, tl),
-                       (br, tl, bl, tr),
-                       (br, tl, tr, bl),
-                       (br, bl, tl, tr),
-                       (br, bl, tr, tl),
-                       (br, tr, tl, bl),
-                       (br, tr, bl, tl),
-                       (tr, tl, bl, br),
-                       (tr, tl, br, bl),
-                       (tr, bl, tl, br),
-                       (tr, bl, br, tl),
-                       (tr, br, tl, bl),
-                       (tr, br, bl, tl)])
+POINTS_SET = np.array(
+    [
+        (tl, bl, br, tr),
+        (tl, bl, tr, br),
+        (tl, br, bl, tr),
+        (tl, br, tr, bl),
+        (tl, tr, bl, br),
+        (tl, tr, br, bl),
+        (bl, tl, br, tr),
+        (bl, tl, tr, br),
+        (bl, br, tl, tr),
+        (bl, br, tr, tl),
+        (bl, tr, tl, br),
+        (bl, tr, br, tl),
+        (br, tl, bl, tr),
+        (br, tl, tr, bl),
+        (br, bl, tl, tr),
+        (br, bl, tr, tl),
+        (br, tr, tl, bl),
+        (br, tr, bl, tl),
+        (tr, tl, bl, br),
+        (tr, tl, br, bl),
+        (tr, bl, tl, br),
+        (tr, bl, br, tl),
+        (tr, br, tl, bl),
+        (tr, br, bl, tl),
+    ]
+)
 CLOCKWISE_PTS = np.array([tl, tr, br, bl])
 COUNTER_CLOCKWISE_PTS = np.array([tl, bl, br, tr])
 
 
-@pytest.mark.parametrize("pts, expected", [
-    (pts, CLOCKWISE_PTS) for pts in POINTS_SET
-])
+@pytest.mark.parametrize(
+    "pts, expected", [(pts, CLOCKWISE_PTS) for pts in POINTS_SET]
+)
 def test_order_points_clockwise(pts, expected):
     ordered_pts = order_points_clockwise(pts)
     np.testing.assert_allclose(ordered_pts, expected)
 
 
-@pytest.mark.parametrize("pts, expected", [
-    (pts, COUNTER_CLOCKWISE_PTS) for pts in POINTS_SET
-])
+@pytest.mark.parametrize(
+    "pts, expected", [(pts, COUNTER_CLOCKWISE_PTS) for pts in POINTS_SET]
+)
 def test_order_points_counter_clockwise(pts, expected):
     ordered_pts = order_points_clockwise(pts, inverse=True)
     np.testing.assert_allclose(ordered_pts, expected)
@@ -80,7 +86,7 @@ def test_polygon_repr():
     # Test __repr__ method
     array = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
     poly = Polygon(array)
-    assert repr(poly) == f"Polygon({str(array)})"
+    assert repr(poly) == f"Polygon({array!s})"
 
 
 def test_polygon_len():
@@ -103,14 +109,14 @@ def test_polygon_normalized():
     # Test initialization with is_normalized=True
     array = np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]])
     poly = Polygon(array, is_normalized=True)
-    assert_array_equal(poly._array, array.astype('float32'))
+    assert_array_equal(poly._array, array.astype("float32"))
     assert poly.is_normalized
 
 
 def test_polygon_invalid_array():
     # Test initialization with invalid arrays
     with pytest.raises(TypeError):
-        invalid_array = "invalid"  # Invalid type
+        invalid_array: Any = "invalid"  # Invalid type
         Polygon(invalid_array)
 
     with pytest.raises(TypeError):
@@ -118,15 +124,15 @@ def test_polygon_invalid_array():
         Polygon(invalid_array)
 
     with pytest.raises(TypeError):
-        invalid_array = [1, 2, 3]  # Invalid type
+        invalid_array: Any = [1, 2, 3]  # Invalid type
         Polygon(invalid_array)
 
     with pytest.raises(TypeError):
-        invalid_array = [1, 2, 3, 4]  # Invalid type
+        invalid_array: Any = [1, 2, 3, 4]  # Invalid type
         Polygon(invalid_array)
 
     with pytest.raises(TypeError):
-        invalid_array = Polygon()  # Invalid type (empty Polygon instance)
+        invalid_array = cast(Any, Polygon)()  # Invalid type (missing args)
         Polygon(invalid_array)
 
 
@@ -152,7 +158,8 @@ def test_polygon_normalize():
     poly = Polygon(array)
     normalized_poly = poly.normalize(100.0, 200.0)
     expected_normalized_array = np.array(
-        [[0.1, 0.1], [0.3, 0.2], [0.5, 0.3]]).astype('float32')
+        [[0.1, 0.1], [0.3, 0.2], [0.5, 0.3]]
+    ).astype("float32")
     assert_array_equal(normalized_poly._array, expected_normalized_array)
     assert normalized_poly.is_normalized
 
@@ -163,9 +170,11 @@ def test_polygon_denormalize():
     poly = Polygon(normalized_array, is_normalized=True)
     denormalized_poly = poly.denormalize(100.0, 200.0)
     expected_denormalized_array = np.array(
-        [[10.0, 20.0], [30.0, 40.0], [50.0, 60.0]]).astype('float32')
+        [[10.0, 20.0], [30.0, 40.0], [50.0, 60.0]]
+    ).astype("float32")
     np.testing.assert_allclose(
-        denormalized_poly._array, expected_denormalized_array)
+        denormalized_poly._array, expected_denormalized_array
+    )
     assert not denormalized_poly.is_normalized
 
 
@@ -173,7 +182,8 @@ def test_polygon_denormalize_non_normalized():
     # Test denormalize method for non-is_normalized Polygon
     array = np.array([[10.0, 20.0], [30.0, 40.0], [50.0, 60.0]])
     poly = Polygon(array)
-    denormalized_poly = poly.denormalize(100.0, 200.0)
+    with pytest.warns(UserWarning, match="Non-normalized polygon"):
+        denormalized_poly = poly.denormalize(100.0, 200.0)
     assert not np.array_equal(denormalized_poly._array, array)
     assert not denormalized_poly.is_normalized
 
@@ -191,7 +201,8 @@ def test_polygon_clip():
     # Test clipping outside the range
     clipped_poly = poly.clip(10, 20, 30, 40)
     expected_clipped_array = np.array(
-        [[10.0, 20.0], [10.0, 20.0], [10.0, 20.0]])
+        [[10.0, 20.0], [10.0, 20.0], [10.0, 20.0]]
+    )
     assert_array_equal(clipped_poly._array, expected_clipped_array)
 
 
@@ -237,7 +248,7 @@ def test_polygon_scale_empty():
     with pytest.raises(ValueError):
         array = np.array([])
         poly = Polygon(array)
-        scaled_poly = poly.scale(1)
+        poly.scale(1)
 
 
 def test_polygon_to_convexhull():
@@ -268,7 +279,7 @@ def test_polygon_to_box():
     poly = Polygon(array)
 
     # Test bounding box of the polygon in "xyxy" format
-    box = poly.to_box(box_mode='xyxy')
+    box = poly.to_box(box_mode="xyxy")
     expected_box = [10, 7, 23, 23]
     assert box.tolist() == expected_box
 
@@ -323,27 +334,22 @@ def test_polygon_is_empty_with_threshold():
     assert non_empty_poly.is_empty(threshold=3) is True
 
 
-test_props_input = np.array([
-    [5, 0],
-    [10, 5],
-    [5, 10],
-    [0, 5]
-])
+test_props_input = np.array([[5, 0], [10, 5], [5, 10], [0, 5]])
 
 test_props_params = [
     (
         "moments",
         {
-            'm00': 50.0,
-            'm10': 250.0,
-            'm01': 250.0,
-            'm20': 1458.3333333333333,
-            'm11': 1250.0,
-            'm02': 1458.3333333333333,
-            'm30': 9375.0,
-            'm21': 7291.666666666667,
-            'm12': 7291.666666666667,
-            'm03': 9375.0,
+            "m00": 50.0,
+            "m10": 250.0,
+            "m01": 250.0,
+            "m20": 1458.3333333333333,
+            "m11": 1250.0,
+            "m02": 1458.3333333333333,
+            "m30": 9375.0,
+            "m21": 7291.666666666667,
+            "m12": 7291.666666666667,
+            "m03": 9375.0,
         },
     ),
     ("area", 50),
@@ -359,7 +365,7 @@ test_props_params = [
 ]
 
 
-@ pytest.mark.parametrize('prop, expected', test_props_params)
+@pytest.mark.parametrize("prop, expected", test_props_params)
 def test_polygon_property(prop, expected):
     value = getattr(Polygon(test_props_input), prop)
     if isinstance(value, (int, float)):
@@ -368,7 +374,7 @@ def test_polygon_property(prop, expected):
         for k, v in expected.items():
             np.testing.assert_allclose(value[k], v, rtol=1e-4)
     elif isinstance(value, (list, tuple)):
-        for v, e in zip(value, expected):
+        for v, e in zip(value, expected, strict=True):
             np.testing.assert_allclose(v, e, rtol=1e-4)
 
 
@@ -396,7 +402,7 @@ def test_polygons_init():
     # Test initialization with invalid input
 
     with pytest.raises(TypeError):
-        invalid_input = "invalid"
+        invalid_input: Any = "invalid"
         polygons = Polygons(invalid_input)
 
 
@@ -441,7 +447,7 @@ def test_polygons_getitem():
 
     # Test invalid input
     with pytest.raises(TypeError):
-        invalid_input = 1.5
+        invalid_input: Any = 1.5
         polygons[invalid_input]
 
 
@@ -465,10 +471,14 @@ def test_polygons_to_min_boxpoints():
     polygons = Polygons(polygons_list)
     min_boxpoints_polygons = polygons.to_min_boxpoints()
     assert len(min_boxpoints_polygons) == 2
-    assert_array_equal(min_boxpoints_polygons[0]._array, np.array(
-        [[5, 0], [10, 5], [5, 10], [0, 5]]))
-    assert_array_equal(min_boxpoints_polygons[1]._array, np.array(
-        [[50, 0], [100, 50], [50, 100], [0, 50]]))
+    assert_array_equal(
+        min_boxpoints_polygons[0]._array,
+        np.array([[5, 0], [10, 5], [5, 10], [0, 5]]),
+    )
+    assert_array_equal(
+        min_boxpoints_polygons[1]._array,
+        np.array([[50, 0], [100, 50], [50, 100], [0, 50]]),
+    )
 
 
 def test_polygons_to_convexhull():
@@ -480,10 +490,14 @@ def test_polygons_to_convexhull():
 
     convexhull_polygons = polygons.to_convexhull()
     assert len(convexhull_polygons) == 2
-    assert_array_equal(convexhull_polygons[0]._array, np.array(
-        [[5, 0], [10, 5], [5, 10], [0, 5]]))
-    assert_array_equal(convexhull_polygons[1]._array, np.array(
-        [[50, 0], [100, 50], [50, 100], [0, 50]]))
+    assert_array_equal(
+        convexhull_polygons[0]._array,
+        np.array([[5, 0], [10, 5], [5, 10], [0, 5]]),
+    )
+    assert_array_equal(
+        convexhull_polygons[1]._array,
+        np.array([[50, 0], [100, 50], [50, 100], [0, 50]]),
+    )
 
 
 def test_polygons_to_boxes():
@@ -536,11 +550,17 @@ def test_polygons_normalize():
     w, h = 10.0, 10.0
     normalized_polygons = polygons.normalize(w, h)
     assert len(normalized_polygons) == 2
-    assert_array_equal(normalized_polygons[0]._array, np.array(
-        [[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]], dtype='float32'))
-    assert_array_equal(normalized_polygons[1]._array, np.array(
-        [[0.7, 0.8], [0.9, 1.0]], dtype='float32'))
-    assert normalized_polygons.is_normalized  # Check if the is_normalized flag is True
+    assert_array_equal(
+        normalized_polygons[0]._array,
+        np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]], dtype="float32"),
+    )
+    assert_array_equal(
+        normalized_polygons[1]._array,
+        np.array([[0.7, 0.8], [0.9, 1.0]], dtype="float32"),
+    )
+    assert (
+        normalized_polygons.is_normalized
+    )  # Check if the is_normalized flag is True
 
 
 def test_polygons_denormalize():
@@ -553,10 +573,13 @@ def test_polygons_denormalize():
     w, h = 10.0, 10.0
     denormalized_polygons = polygons.denormalize(w, h)
     assert len(denormalized_polygons) == 2
-    assert_array_equal(denormalized_polygons[0]._array, np.array(
-        [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]))
-    assert_array_equal(denormalized_polygons[1]._array, np.array(
-        [[7.0, 8.0], [9.0, 10.0]]))
+    assert_array_equal(
+        denormalized_polygons[0]._array,
+        np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]),
+    )
+    assert_array_equal(
+        denormalized_polygons[1]._array, np.array([[7.0, 8.0], [9.0, 10.0]])
+    )
     # Check if the is_normalized flag is False
     assert not denormalized_polygons.is_normalized
 
@@ -571,10 +594,14 @@ def test_polygons_scale():
     # Test scaling with distance=1 and default join_style (mitre)
     scaled_polygons = polygons.scale(1)
     assert len(scaled_polygons) == 2
-    assert_array_equal(scaled_polygons[0]._array, np.array(
-        [[9, 9], [9, 21], [21, 21], [21, 9]]))
-    assert_array_equal(scaled_polygons[1]._array, np.array(
-        [[9, 9], [9, 21], [21, 21], [21, 9]]))
+    assert_array_equal(
+        scaled_polygons[0]._array,
+        np.array([[9, 9], [9, 21], [21, 21], [21, 9]]),
+    )
+    assert_array_equal(
+        scaled_polygons[1]._array,
+        np.array([[9, 9], [9, 21], [21, 21], [21, 9]]),
+    )
     # Check if no empty polygons after scaling
     assert not scaled_polygons.is_empty().any()
 
@@ -587,7 +614,6 @@ def test_polygons_numpy():
     polygons = Polygons(polygons_list)
 
     non_flattened_numpy_array = polygons.numpy(flatten=False)
-    expected_non_flattened_array = np.array([array1, array2], dtype=object)
     for i in range(len(polygons)):
         assert_array_equal(non_flattened_numpy_array[i], polygons[i]._array)
 
@@ -601,7 +627,9 @@ def test_polygons_to_list():
 
     flattened_list = polygons.to_list(flatten=True)
     expected_flattened_list = [
-        [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [7.0, 8.0, 9.0, 10.0]]
+        [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        [7.0, 8.0, 9.0, 10.0],
+    ]
     assert flattened_list == expected_flattened_list
 
     non_flattened_list = polygons.to_list(flatten=False)
@@ -617,26 +645,32 @@ test_ploygons_props_input = [
 
 test_ploygons_props_params = [
     (
-        "moments", [
+        "moments",
+        [
             {
-                'm00': 50.0,
-                'm10': 250.0,
-                'm01': 250.0,
+                "m00": 50.0,
+                "m10": 250.0,
+                "m01": 250.0,
             },
             {
-                'm00': 50.0,
-                'm10': 250.0,
-                'm01': 250.0,
+                "m00": 50.0,
+                "m10": 250.0,
+                "m01": 250.0,
             },
-        ]
+        ],
     ),
     ("area", np.array([50, 50])),
     ("arclength", np.array([28.28427, 28.28427])),
     ("centroid", np.array([(5, 5), (5, 5)])),
     ("boundingbox", np.array([(0, 0, 10, 10), (0, 0, 10, 10)])),
     ("min_circle", [((5.0, 5.0), 5.0), ((5.0, 5.0), 5.0)]),
-    ("min_box", [((5.0, 5.0), (7.07106, 7.07106), 45.0),
-     ((5.0, 5.0), (7.07106, 7.07106), 45.0)]),
+    (
+        "min_box",
+        [
+            ((5.0, 5.0), (7.07106, 7.07106), 45.0),
+            ((5.0, 5.0), (7.07106, 7.07106), 45.0),
+        ],
+    ),
     ("orientation", np.array([45, 45])),
     ("min_box_wh", np.array([(7.07106, 7.07106), (7.07106, 7.07106)])),
     ("extent", np.array([0.5, 0.5])),
@@ -644,19 +678,199 @@ test_ploygons_props_params = [
 ]
 
 
-@ pytest.mark.parametrize('prop, expected', test_ploygons_props_params)
+@pytest.mark.parametrize("prop, expected", test_ploygons_props_params)
 def test_polygons_property(prop, expected):
     value = getattr(Polygons(test_ploygons_props_input), prop)
     if isinstance(value, (int, float, np.ndarray)):
         np.testing.assert_allclose(value, expected, rtol=1e-4)
     elif isinstance(value, list):
-        for v, e in zip(value, expected):
+        for v, e in zip(value, expected, strict=True):
             if isinstance(v, (list, tuple)):
-                for vv, ee in zip(v, e):
+                for vv, ee in zip(v, e, strict=True):
                     np.testing.assert_allclose(
-                        np.array(vv), np.array(ee), rtol=1e-4)
+                        np.array(vv), np.array(ee), rtol=1e-4
+                    )
             elif isinstance(v, dict):
                 for key, val in e.items():
                     assert v[key] == val
             else:
                 np.testing.assert_allclose(np.array(v), np.array(e), rtol=1e-4)
+
+
+def test_order_points_clockwise_rejects_invalid_shape():
+    with pytest.raises(ValueError, match=r"shape \(4, 2\)"):
+        order_points_clockwise(np.zeros((3, 2), dtype=np.float32))
+
+
+def test_polygon_accepts_nx1x2_contour_array_and_eq_non_polygon():
+    contour = np.array([[[1.0, 2.0]], [[3.0, 4.0]]], dtype=np.float32)
+    poly = Polygon(contour)
+    assert poly.numpy().shape == (2, 2)
+    assert (poly == object()) is False
+
+
+def test_polygon_warns_on_double_normalize_and_clip_rejects_nan():
+    poly = Polygon(
+        np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]]),
+        is_normalized=True,
+    )
+    with pytest.warns(UserWarning, match="forced to do normalization"):
+        _ = poly.normalize(10.0, 10.0)
+
+    with pytest.raises(ValueError, match="infinite or NaN"):
+        Polygon(np.array([[np.nan, 0.0], [1.0, 1.0], [2.0, 2.0]])).clip(
+            0, 0, 10, 10
+        )
+
+
+def test_polygon_is_empty_validates_threshold_type():
+    poly = Polygon(np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]]))
+    with pytest.raises(TypeError, match='expected "int"'):
+        poly.is_empty(threshold="3")  # type: ignore[arg-type]
+
+
+def test_polygons_init_from_polygons_repr_and_eq_edge_cases():
+    polygons = Polygons(
+        [
+            np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]]),
+            np.array([[0.0, 0.0], [0.0, 2.0], [2.0, 2.0]]),
+        ]
+    )
+    polygons2 = Polygons(polygons)
+    assert polygons2 == polygons
+    assert "Polygons(" in repr(polygons2)
+
+    assert (polygons == object()) is False
+
+    polygons_small = Polygons([np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]])])
+    assert (polygons_small == polygons) is False
+
+
+def test_polygons_warns_on_double_normalize_denormalize_and_supports_clip_shift_tolist():
+    poly = Polygon(
+        np.array([[0.1, 0.1], [0.9, 0.1], [0.9, 0.9]]),
+        is_normalized=True,
+    )
+    polygons = Polygons([poly], is_normalized=True)
+    with pytest.warns(UserWarning, match="forced to do normalization"):
+        _ = polygons.normalize(10.0, 10.0)
+
+    with pytest.warns(UserWarning, match="forced to do denormalization"):
+        _ = Polygons([poly], is_normalized=False).denormalize(10.0, 10.0)
+
+    clipped = polygons.clip(0, 0, 1, 1)
+    shifted = polygons.shift(1.0, -1.0)
+    assert isinstance(clipped, Polygons)
+    assert isinstance(shifted, Polygons)
+    assert clipped.tolist() == clipped.to_list()
+
+
+def test_polygons_from_image_validates_type_and_filters_short_contours(
+    monkeypatch,
+):
+    import capybara.structures.polygons as poly_mod
+
+    with pytest.raises(TypeError, match=r"np\.ndarray"):
+        Polygons.from_image("not-an-array")  # type: ignore[arg-type]
+
+    def fake_find_contours(image, *, mode, method):
+        assert isinstance(image, np.ndarray)
+        assert isinstance(mode, int)
+        assert isinstance(method, int)
+        return (
+            [
+                np.zeros((1, 1, 2), dtype=np.int32),
+                np.array([[[1, 2]], [[3, 4]]], dtype=np.int32),
+            ],
+            None,
+        )
+
+    monkeypatch.setattr(poly_mod.cv2, "findContours", fake_find_contours)
+    polys = Polygons.from_image(np.zeros((10, 10), dtype=np.uint8))
+    assert len(polys) == 1
+    assert polys[0].numpy().shape == (2, 2)
+
+
+def test_polygons_cat_validation_and_happy_path():
+    with pytest.raises(TypeError, match="should be a list"):
+        Polygons.cat("bad")  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="is empty"):
+        Polygons.cat([])
+
+    with pytest.raises(TypeError, match="must be Polygon"):
+        Polygons.cat([Polygons([]), "bad"])  # type: ignore[list-item]
+
+    polys1 = Polygons([np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]])])
+    polys2 = Polygons([np.array([[0.0, 0.0], [0.0, 2.0], [2.0, 2.0]])])
+    cat = Polygons.cat([polys1, polys2])
+    assert len(cat) == 2
+
+
+def test_polygon_scale_handles_multipolygon_and_empty_exterior(monkeypatch):
+    import capybara.structures.polygons as poly_mod
+
+    class _FakeExterior:
+        def __init__(self, *, xy, is_empty: bool) -> None:
+            self.xy = xy
+            self.is_empty = is_empty
+
+    class _FakeMultiPolygon:
+        def __init__(self, geoms) -> None:
+            self.geoms = geoms
+
+    class _FakeShapelyPolygon:
+        def __init__(
+            self,
+            arr,
+            *,
+            area: float = 0.0,
+            exterior_empty: bool = False,
+            xy=None,
+        ) -> None:
+            self._area = area
+            self.exterior = _FakeExterior(
+                xy=xy or ([], []), is_empty=exterior_empty
+            )
+            self._arr = np.array(arr, dtype=np.float32)
+
+        @property
+        def area(self) -> float:
+            return self._area
+
+        def buffer(self, *_args, **_kwargs):
+            p1 = _FakeShapelyPolygon(
+                self._arr,
+                area=1.0,
+                exterior_empty=False,
+                xy=([0.0, 0.0, 1.0, 1.0], [0.0, 1.0, 1.0, 0.0]),
+            )
+            p2 = _FakeShapelyPolygon(
+                self._arr,
+                area=2.0,
+                exterior_empty=False,
+                xy=([0.0, 0.0, 2.0, 2.0], [0.0, 2.0, 2.0, 0.0]),
+            )
+            return _FakeMultiPolygon([p1, p2])
+
+    monkeypatch.setattr(poly_mod, "_Polygon_shapely", _FakeShapelyPolygon)
+    monkeypatch.setattr(poly_mod, "MultiPolygon", _FakeMultiPolygon)
+
+    poly = Polygon(np.array([[0.0, 0.0], [0.0, 1.0], [1.0, 1.0], [1.0, 0.0]]))
+    scaled = poly.scale(1)
+    assert scaled.numpy().shape == poly.numpy().shape
+
+    class _FakeShapelyPolygonEmptyExterior(_FakeShapelyPolygon):
+        def buffer(self, *_args, **_kwargs):
+            return _FakeShapelyPolygon(
+                self._arr,
+                area=1.0,
+                exterior_empty=True,
+                xy=([], []),
+            )
+
+    monkeypatch.setattr(
+        poly_mod, "_Polygon_shapely", _FakeShapelyPolygonEmptyExterior
+    )
+    empty_scaled = poly.scale(1)
+    assert empty_scaled.is_empty()

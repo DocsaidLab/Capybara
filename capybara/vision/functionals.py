@@ -1,5 +1,5 @@
 from bisect import bisect_left
-from typing import List, Optional, Tuple, Union
+from typing import Literal, overload
 
 import cv2
 import numpy as np
@@ -9,26 +9,31 @@ from ..structures import Box, Boxes
 from .geometric import imresize
 
 __all__ = [
-    'meanblur', 'gaussianblur', 'medianblur', 'imcvtcolor', 'imadjust', 'pad',
-    'imcropbox', 'imcropboxes', 'imbinarize', 'centercrop', 'imresize_and_pad_if_need'
+    "centercrop",
+    "gaussianblur",
+    "imadjust",
+    "imbinarize",
+    "imcropbox",
+    "imcropboxes",
+    "imcvtcolor",
+    "imresize_and_pad_if_need",
+    "meanblur",
+    "medianblur",
+    "pad",
 ]
 
-_Ksize = Union[int, Tuple[int, int], np.ndarray]
+_Ksize = int | tuple[int, int] | np.ndarray
 
 
-def _check_ksize(ksize: _Ksize) -> Tuple[int, int]:
+def _check_ksize(ksize: _Ksize) -> tuple[int, int]:
     if isinstance(ksize, int):
-        ksize = (ksize, ksize)
-    elif isinstance(ksize, tuple) and len(ksize) == 2 \
-            and all(isinstance(val, int) for val in ksize):
-        ksize = tuple(ksize)
-    elif isinstance(ksize, np.ndarray) and ksize.ndim == 0:
-        ksize = (int(ksize), int(ksize))
-    else:
-        raise TypeError(f'The input ksize = {ksize} is invalid.')
-
-    ksize = tuple(int(val) for val in ksize)
-    return ksize
+        return ksize, ksize
+    if isinstance(ksize, tuple) and len(ksize) == 2:
+        return int(ksize[0]), int(ksize[1])
+    if isinstance(ksize, np.ndarray) and ksize.ndim == 0:
+        value = int(ksize)
+        return value, value
+    raise TypeError(f"The input ksize = {ksize} is invalid.")
 
 
 def meanblur(img: np.ndarray, ksize: _Ksize = 3, **kwargs) -> np.ndarray:
@@ -52,7 +57,9 @@ def meanblur(img: np.ndarray, ksize: _Ksize = 3, **kwargs) -> np.ndarray:
     return cv2.blur(img, ksize=ksize, **kwargs)
 
 
-def gaussianblur(img: np.ndarray, ksize: _Ksize = 3, sigmaX: int = 0, **kwargs) -> np.ndarray:
+def gaussianblur(
+    img: np.ndarray, ksize: _Ksize = 3, sigma_x: int = 0, **kwargs
+) -> np.ndarray:
     """
     Apply Gaussian blur to the input image.
 
@@ -65,7 +72,7 @@ def gaussianblur(img: np.ndarray, ksize: _Ksize = 3, sigmaX: int = 0, **kwargs) 
             size will be used. If a tuple (k_height, k_width) is provided, a
             rectangular kernel of the specified size will be used.
             Defaults to 3.
-        sigmaX (int, optional):
+        sigma_x (int, optional):
             The standard deviation in the X direction for Gaussian kernel.
             Defaults to 0.
 
@@ -73,7 +80,8 @@ def gaussianblur(img: np.ndarray, ksize: _Ksize = 3, sigmaX: int = 0, **kwargs) 
         np.ndarray: The blurred image.
     """
     ksize = _check_ksize(ksize)
-    return cv2.GaussianBlur(img, ksize=ksize, sigmaX=sigmaX, **kwargs)
+    sigma_x = int(kwargs.pop("sigmaX", sigma_x))
+    return cv2.GaussianBlur(img, ksize=ksize, sigmaX=sigma_x, **kwargs)
 
 
 def medianblur(img: np.ndarray, ksize: int = 3, **kwargs) -> np.ndarray:
@@ -94,7 +102,7 @@ def medianblur(img: np.ndarray, ksize: int = 3, **kwargs) -> np.ndarray:
     return cv2.medianBlur(img, ksize=ksize, **kwargs)
 
 
-def imcvtcolor(img: np.ndarray, cvt_mode: Union[int, str]) -> np.ndarray:
+def imcvtcolor(img: np.ndarray, cvt_mode: int | str) -> np.ndarray:
     """
     Convert the color space of the input image.
 
@@ -113,18 +121,24 @@ def imcvtcolor(img: np.ndarray, cvt_mode: Union[int, str]) -> np.ndarray:
     Raises:
         ValueError: If the input cvt_mode is invalid or not supported.
     """
-    code = getattr(cv2, f'COLOR_{cvt_mode}', None)
-    if code is None:
-        raise ValueError(f'Input cvt_mode: "{cvt_mode}" is invaild.')
+    if isinstance(cvt_mode, (int, np.integer)):
+        code = int(cvt_mode)
+    else:
+        mode = str(cvt_mode).upper()
+        if mode.startswith("COLOR_"):
+            mode = mode[len("COLOR_") :]
+        code = getattr(cv2, f"COLOR_{mode}", None)
+        if code is None:
+            raise ValueError(f'Input cvt_mode: "{cvt_mode}" is invaild.')
     img = cv2.cvtColor(img.copy(), code)
     return img
 
 
 def imadjust(
     img: np.ndarray,
-    rng_out: Tuple[int, int] = (0, 255),
+    rng_out: tuple[int, int] = (0, 255),
     gamma: float = 1.0,
-    color_base: str = 'BGR'
+    color_base: str = "BGR",
 ) -> np.ndarray:
     """
     Adjust the intensity of an image.
@@ -161,7 +175,7 @@ def imadjust(
     """
     is_trans_hsv = False
     if img.ndim == 3:
-        img_hsv = imcvtcolor(img, f'{color_base}2HSV')
+        img_hsv = imcvtcolor(img, f"{color_base}2HSV")
         v = img_hsv[..., 2]
         is_trans_hsv = True
     else:
@@ -171,7 +185,7 @@ def imadjust(
     total = v.size
     low_bound, upp_bound = total * 0.01, total * 0.99
 
-    hist, _ = np.histogram(v.ravel(), 256, [0, 256])
+    hist, _ = np.histogram(v.ravel(), 256, (0, 256))
     cdf = hist.cumsum()
     rng_in = [bisect_left(cdf, low_bound), bisect_left(cdf, upp_bound)]
     if (rng_in[0] == rng_in[1]) or (rng_in[1] == 0):
@@ -182,21 +196,21 @@ def imadjust(
     dist_out = rng_out[1] - rng_out[0]
 
     dst = np.clip((np.clip(v, rng_in[0], None) - rng_in[0]) / dist_in, 0, 1)
-    dst = (dst ** gamma) * dist_out + rng_out[0]
-    dst = np.clip(dst, rng_out[0], rng_out[1]).astype('uint8')
+    dst = (dst**gamma) * dist_out + rng_out[0]
+    dst = np.clip(dst, rng_out[0], rng_out[1]).astype("uint8")
 
     if is_trans_hsv:
         img_hsv[..., 2] = dst
-        dst = imcvtcolor(img_hsv, f'HSV2{color_base}')
+        dst = imcvtcolor(img_hsv, f"HSV2{color_base}")
 
     return dst
 
 
 def pad(
     img: np.ndarray,
-    pad_size: Union[int, Tuple[int, int], Tuple[int, int, int, int]],
-    pad_value: Optional[Union[int, Tuple[int, int, int]]] = 0,
-    pad_mode: Union[str, int, BORDER] = BORDER.CONSTANT
+    pad_size: int | tuple[int, int] | tuple[int, int, int, int],
+    pad_value: int | tuple[int, ...] | None = 0,
+    pad_mode: str | int | BORDER = BORDER.CONSTANT,
 ) -> np.ndarray:
     """
     Pad the input image with specified padding size and mode.
@@ -227,29 +241,62 @@ def pad(
         np.ndarray: The padded image.
     """
     if isinstance(pad_size, int):
-        left = right = top = bottom = pad_size
-    elif len(pad_size) == 2:
-        top = bottom = pad_size[0]
-        left = right = pad_size[1]
-    elif len(pad_size) == 4:
-        top, bottom, left, right = pad_size
+        left = right = top = bottom = int(pad_size)
+    elif isinstance(pad_size, tuple) and len(pad_size) == 2:
+        top = bottom = int(pad_size[0])
+        left = right = int(pad_size[1])
+    elif isinstance(pad_size, tuple) and len(pad_size) == 4:
+        top, bottom, left, right = (int(v) for v in pad_size)
     else:
         raise ValueError(
-            f'pad_size is not an int, a tuple with 2 ints, or a tuple with 4 ints.')
+            "pad_size is not an int, a tuple with 2 ints, or a tuple with 4 ints."
+        )
 
     pad_mode = BORDER.obj_to_enum(pad_mode)
+
+    if pad_value is None:
+        pad_value = 0
+
     if pad_mode == BORDER.CONSTANT:
-        if img.ndim == 3 and isinstance(pad_value, int):
-            pad_value = (pad_value, ) * img.shape[-1]
-        cond1 = img.ndim == 3 and len(pad_value) == img.shape[-1]
-        cond2 = img.ndim == 2 and isinstance(pad_value, int)
-        if not (cond1 or cond2):
+        if img.ndim == 2:
+            channels = 1
+        elif img.ndim == 3:
+            channels = int(img.shape[-1])
+        else:
+            raise ValueError("img must be a 2D or 3D numpy image.")
+
+        if isinstance(pad_value, int):
+            if channels == 1:
+                pad_value = int(pad_value)
+            else:
+                pad_value = tuple(int(pad_value) for _ in range(channels))
+        elif isinstance(pad_value, tuple):
+            if channels == 1:
+                if len(pad_value) == 1:
+                    pad_value = int(pad_value[0])
+                else:
+                    raise ValueError(
+                        "pad_value must be an int when padding a grayscale image."
+                    )
+            elif len(pad_value) == channels:
+                pad_value = tuple(int(v) for v in pad_value)
+            else:
+                raise ValueError(
+                    f"channel of image is {channels} but pad_value is {pad_value}."
+                )
+        else:
             raise ValueError(
-                f'channel of image is {img.shape[-1]} but length of fill is {len(pad_value)}.')
+                "pad_value must be an int or a tuple matching channel count."
+            )
 
     img = cv2.copyMakeBorder(
-        src=img, top=top, bottom=bottom, left=left, right=right,
-        borderType=pad_mode, value=pad_value
+        src=img,
+        top=top,
+        bottom=bottom,
+        left=left,
+        right=right,
+        borderType=pad_mode.value,
+        value=pad_value,
     )
 
     return img
@@ -257,7 +304,7 @@ def pad(
 
 def imcropbox(
     img: np.ndarray,
-    box: Union[Box, np.ndarray],
+    box: Box | np.ndarray,
     use_pad: bool = False,
 ) -> np.ndarray:
     """
@@ -302,7 +349,8 @@ def imcropbox(
         x1, y1, x2, y2 = box.astype(int)
     else:
         raise TypeError(
-            f'Input box is not of type Box or NumPy array with 4 elements.')
+            "Input box is not of type Box or NumPy array with 4 elements."
+        )
 
     im_h, im_w = img.shape[:2]
     crop_x1 = max(0, x1)
@@ -325,9 +373,9 @@ def imcropbox(
 
 def imcropboxes(
     img: np.ndarray,
-    boxes: Union[Boxes, np.ndarray],
+    boxes: Boxes | np.ndarray,
     use_pad: bool = False,
-) -> List[np.ndarray]:
+) -> list[np.ndarray]:
     """
     Crop the input image using multiple boxes.
     """
@@ -335,9 +383,7 @@ def imcropboxes(
 
 
 def imbinarize(
-    img: np.ndarray,
-    threth: int = cv2.THRESH_BINARY,
-    color_base: str = 'BGR'
+    img: np.ndarray, threth: int = cv2.THRESH_BINARY, color_base: str = "BGR"
 ) -> np.ndarray:
     """
     Function for image binarize.
@@ -367,7 +413,7 @@ def imbinarize(
             Binary image.
     """
     if img.ndim == 3:
-        img = imcvtcolor(img, f'{color_base}2GRAY')
+        img = imcvtcolor(img, f"{color_base}2GRAY")
     _, dst = cv2.threshold(img, 0, 255, type=threth + cv2.THRESH_OTSU)
     return dst
 
@@ -383,22 +429,49 @@ def centercrop(img: np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: The cropped image.
     """
-    box = Box([0, 0, img.shape[1], img.shape[0]]).square()
+    box = Box((0, 0, int(img.shape[1]), int(img.shape[0]))).square()
     return imcropbox(img, box)
+
+
+@overload
+def imresize_and_pad_if_need(
+    img: np.ndarray,
+    max_h: int,
+    max_w: int,
+    interpolation: str | int | INTER = INTER.BILINEAR,
+    pad_value: int | tuple[int, int, int] | None = 0,
+    pad_mode: str | int | BORDER = BORDER.CONSTANT,
+    return_scale: Literal[False] = False,
+) -> np.ndarray: ...
+
+
+@overload
+def imresize_and_pad_if_need(
+    img: np.ndarray,
+    max_h: int,
+    max_w: int,
+    interpolation: str | int | INTER = INTER.BILINEAR,
+    pad_value: int | tuple[int, int, int] | None = 0,
+    pad_mode: str | int | BORDER = BORDER.CONSTANT,
+    return_scale: Literal[True] = True,
+) -> tuple[np.ndarray, float]: ...
 
 
 def imresize_and_pad_if_need(
     img: np.ndarray,
     max_h: int,
     max_w: int,
-    interpolation: Union[str, int, INTER] = INTER.BILINEAR,
-    pad_value: Optional[Union[int, Tuple[int, int, int]]] = 0,
-    pad_mode: Union[str, int, BORDER] = BORDER.CONSTANT,
+    interpolation: str | int | INTER = INTER.BILINEAR,
+    pad_value: int | tuple[int, int, int] | None = 0,
+    pad_mode: str | int | BORDER = BORDER.CONSTANT,
     return_scale: bool = False,
-):
+) -> np.ndarray | tuple[np.ndarray, float]:
     raw_h, raw_w = img.shape[:2]
     scale = min(max_h / raw_h, max_w / raw_w)
-    dst_h, dst_w = min(int(raw_h * scale), max_h), min(int(raw_w * scale), max_w)
+    dst_h, dst_w = (
+        min(int(raw_h * scale), max_h),
+        min(int(raw_w * scale), max_w),
+    )
     img = imresize(
         img,
         (dst_h, dst_w),

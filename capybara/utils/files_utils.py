@@ -1,7 +1,7 @@
 import errno
 import hashlib
 import os
-from typing import Any, List, Tuple, Union
+from typing import Any
 
 import dill
 import numpy as np
@@ -13,12 +13,19 @@ from .custom_path import Path
 from .custom_tqdm import Tqdm
 
 __all__ = [
-    'gen_md5', 'get_files', 'load_json', 'dump_json', 'load_pickle',
-    'dump_pickle', 'load_yaml', 'dump_yaml', 'img_to_md5',
+    "dump_json",
+    "dump_pickle",
+    "dump_yaml",
+    "gen_md5",
+    "get_files",
+    "img_to_md5",
+    "load_json",
+    "load_pickle",
+    "load_yaml",
 ]
 
 
-def gen_md5(file: Union[str, Path], block_size: int = 256 * 128) -> str:
+def gen_md5(file: str | Path, block_size: int = 256 * 128) -> str:
     """
     This function is to gen md5 based on given file.
 
@@ -32,9 +39,9 @@ def gen_md5(file: Union[str, Path], block_size: int = 256 * 128) -> str:
     Returns:
         md5 (str)
     """
-    with open(str(file), 'rb') as f:
+    with open(str(file), "rb") as f:
         md5 = hashlib.md5()
-        for chunk in iter(lambda: f.read(block_size), b''):
+        for chunk in iter(lambda: f.read(block_size), b""):
             md5.update(chunk)
     return str(md5.hexdigest())
 
@@ -47,7 +54,7 @@ def img_to_md5(img: np.ndarray) -> str:
     return str(md5_hash.hexdigest())
 
 
-def load_json(path: Union[Path, str], **kwargs) -> dict:
+def load_json(path: Path | str, **kwargs) -> dict:
     """
     Function to read ujson.
 
@@ -57,12 +64,12 @@ def load_json(path: Union[Path, str], **kwargs) -> dict:
     Returns:
         dict: ujson load to dictionary
     """
-    with open(str(path), 'r') as f:
+    with open(str(path)) as f:
         data = ujson.load(f, **kwargs)
     return data
 
 
-def dump_json(obj: Any, path: Union[str, Path] = None, **kwargs) -> None:
+def dump_json(obj: Any, path: str | Path | None = None, **kwargs) -> None:
     """
     Function to write obj to ujson
 
@@ -71,23 +78,23 @@ def dump_json(obj: Any, path: Union[str, Path] = None, **kwargs) -> None:
         path (Union[str, Path]): ujson file's path
     """
     dump_options = {
-        'sort_keys': False,
-        'indent': 2,
-        'ensure_ascii': False,
-        'escape_forward_slashes': False,
+        "sort_keys": False,
+        "indent": 2,
+        "ensure_ascii": False,
+        "escape_forward_slashes": False,
     }
     dump_options.update(kwargs)
 
     if path is None:
-        path = Path.cwd() / 'tmp.json'
+        path = Path.cwd() / "tmp.json"
 
-    with open(str(path), 'w') as f:
+    with open(str(path), "w") as f:
         ujson.dump(obj, f, **dump_options)
 
 
 def get_files(
-    folder: Union[str, Path],
-    suffix: Union[str, List[str], Tuple[str]] = None,
+    folder: str | Path,
+    suffix: str | list[str] | tuple[str, ...] | None = None,
     recursive: bool = True,
     return_pathlib: bool = True,
     sort_path: bool = True,
@@ -126,25 +133,28 @@ def get_files(
     folder = Path(folder)
     if not folder.is_dir():
         raise FileNotFoundError(
-            errno.ENOENT, os.strerror(errno.ENOENT), str(folder))
+            errno.ENOENT, os.strerror(errno.ENOENT), str(folder)
+        )
 
     if not isinstance(suffix, (str, list, tuple)) and suffix is not None:
-        raise TypeError('suffix must be a string, list or tuple.')
+        raise TypeError("suffix must be a string, list or tuple.")
 
     # checking suffix
     suffix = [suffix] if isinstance(suffix, str) else suffix
     if suffix is not None and ignore_letter_case:
         suffix = [s.lower() for s in suffix]
 
-    if recursive:
-        files_gen = folder.rglob('*')
-    else:
-        files_gen = folder.glob('*')
+    files_gen = folder.rglob("*") if recursive else folder.glob("*")
 
     files = []
     for f in Tqdm(files_gen, leave=False):
-        if suffix is None or (ignore_letter_case and f.suffix.lower() in suffix) \
-                or (not ignore_letter_case and f.suffix in suffix):
+        if not f.is_file():
+            continue
+        if (
+            suffix is None
+            or (ignore_letter_case and f.suffix.lower() in suffix)
+            or (not ignore_letter_case and f.suffix in suffix)
+        ):
             files.append(f.absolute())
 
     if not return_pathlib:
@@ -156,7 +166,7 @@ def get_files(
     return files
 
 
-def load_pickle(path: Union[str, Path]):
+def load_pickle(path: str | Path):
     """
     Function to load a pickle.
 
@@ -166,11 +176,11 @@ def load_pickle(path: Union[str, Path]):
     Returns:
         loaded_pickle (dict): loaded pickle.
     """
-    with open(str(path), 'rb') as f:
+    with open(str(path), "rb") as f:
         return dill.load(f)
 
 
-def dump_pickle(obj, path: Union[str, Path]):
+def dump_pickle(obj, path: str | Path):
     """
     Function to dump an obj to a pickle file.
 
@@ -178,11 +188,11 @@ def dump_pickle(obj, path: Union[str, Path]):
         obj: object to be dump.
         path (Union[str, Path]): file path.
     """
-    with open(str(path), 'wb') as f:
+    with open(str(path), "wb") as f:
         dill.dump(obj, f)
 
 
-def load_yaml(path: Union[Path, str]) -> dict:
+def load_yaml(path: Path | str) -> dict:
     """
     Function to read yaml.
 
@@ -192,12 +202,12 @@ def load_yaml(path: Union[Path, str]) -> dict:
     Returns:
         dict: yaml load to dictionary
     """
-    with open(str(path), 'r') as f:
+    with open(str(path)) as f:
         data = yaml.load(f, Loader=yaml.FullLoader)
     return data
 
 
-def dump_yaml(obj, path: Union[str, Path] = None, **kwargs):
+def dump_yaml(obj, path: str | Path | None = None, **kwargs) -> None:
     """
     Function to dump an obj to a yaml file.
 
@@ -205,14 +215,11 @@ def dump_yaml(obj, path: Union[str, Path] = None, **kwargs):
         obj: object to be dump.
         path (Union[str, Path]): file path.
     """
-    dump_options = {
-        'indent': 2,
-        'sort_keys': True
-    }
+    dump_options = {"indent": 2, "sort_keys": True}
     dump_options.update(kwargs)
 
     if path is None:
-        path = Path.cwd() / 'tmp.yaml'
+        path = Path.cwd() / "tmp.yaml"
 
-    with open(str(path), 'w') as f:
+    with open(str(path), "w") as f:
         yaml.dump(obj, f, **dump_options)

@@ -5,7 +5,13 @@ import cv2
 from .mixins import EnumCheckMixin
 
 __all__ = [
-    'INTER', 'ROTATE', 'BORDER', 'MORPH', 'COLORSTR', 'FORMATSTR', 'IMGTYP'
+    "BORDER",
+    "COLORSTR",
+    "FORMATSTR",
+    "IMGTYP",
+    "INTER",
+    "MORPH",
+    "ROTATE",
 ]
 
 

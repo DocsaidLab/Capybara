@@ -1,161 +1,172 @@
+from typing import Any, cast
+
 import pytest
 
 from capybara import PowerDict
 
-power_dict_attr_data = [
-    (
+
+def test_powerdict_init_accepts_none_and_kwargs():
+    assert PowerDict() == {}
+    assert PowerDict(None) == {}
+
+    pd = PowerDict(None, new="value")
+    assert pd == {"new": "value"}
+    assert pd.new == "value"
+
+    pd = PowerDict({"a": 1}, b=2)
+    assert pd == {"a": 1, "b": 2}
+    assert pd.a == 1
+    assert pd.b == 2
+
+
+def test_powerdict_attribute_and_item_access_are_kept_in_sync():
+    pd = PowerDict()
+    pd.alpha = 1
+    assert pd["alpha"] == 1
+
+    pd["beta"] = 2
+    assert pd.beta == 2
+
+    del pd["alpha"]
+    assert "alpha" not in pd
+    assert not hasattr(pd, "alpha")
+
+    pd.gamma = 3
+    del pd.gamma
+    assert "gamma" not in pd
+
+
+def test_powerdict_recursively_wraps_nested_mappings_and_sequences():
+    pd = PowerDict(
         {
-            'key': 'value',
-            'name': 'mock_name'
-        },
-        ['key', 'name']
+            "cfg": {"x": 1},
+            "items": [{"y": 2}, {"z": 3}],
+            "numbers_tuple": (1, 2, 3),
+        }
     )
 
-]
+    assert isinstance(pd.cfg, PowerDict)
+    assert pd.cfg.x == 1
+
+    assert isinstance(pd.items, list)
+    assert [type(x) for x in pd.items] == [PowerDict, PowerDict]
+    assert pd.items[0].y == 2
+    assert pd.items[1].z == 3
+
+    # Tuples are normalized to lists to keep internal mutation rules simple.
+    assert pd.numbers_tuple == [1, 2, 3]
 
 
-@pytest.mark.parametrize('x, match', power_dict_attr_data)
-def test_power_dict_attr(x, match):
-    test_dict = PowerDict(x)
-    for attr in match:
-        assert hasattr(test_dict, attr)
+def test_powerdict_freeze_blocks_mutation_and_melt_restores():
+    pd = PowerDict({"a": 1, "nested": {"b": 2}})
+    pd.freeze()
+
+    with pytest.raises(ValueError, match="PowerDict is frozen"):
+        pd.a = 10
+    with pytest.raises(ValueError, match="PowerDict is frozen"):
+        pd["a"] = 10
+    with pytest.raises(ValueError, match="PowerDict is frozen"):
+        del pd.a
+    with pytest.raises(ValueError, match="PowerDict is frozen"):
+        del pd["a"]
+    with pytest.raises(ValueError, match="PowerDict is frozen"):
+        pd.update({"c": 3})
+    with pytest.raises(ValueError, match="PowerDict is frozen"):
+        pd.pop("a")
+
+    # Nested PowerDict is also frozen.
+    with pytest.raises(ValueError, match="PowerDict is frozen"):
+        pd.nested.b = 20
+
+    pd.melt()
+    pd.a = 10
+    pd.update({"c": 3})
+    assert pd == {"a": 10, "nested": {"b": 2}, "c": 3}
 
 
-power_dict_freeze_melt_data = [
-    (
-        {
-            'key': 'value',
-        },
-        ['key']
-    ),
-    (
-        {
-            'PowerDict': PowerDict({'A': 1}),
-        },
-        ['PowerDict']
-    ),
-    (
-        {
-            'list': [1, 2, 3],
-            'tuple': (1, 2, 3)
-        },
-        ['list', 'tuple']
-    ),
-    (
-        {
-            'PowerDict_in_list': [PowerDict({'A': 1}), PowerDict({'B': 2})],
-            'PowerDict_in_tuple': (PowerDict({'A': 1}), PowerDict({'B': 2}))
-        },
-        ['PowerDict_in_list', 'PowerDict_in_tuple']
-    )
-]
+def test_powerdict_pop_behaves_like_dict_pop():
+    pd = PowerDict({"a": 1})
+    assert pd.pop("a") == 1
+    assert "a" not in pd
+
+    assert pd.pop("missing", None) is None
+
+    with pytest.raises(KeyError):
+        pd.pop("missing")
 
 
-@pytest.mark.parametrize('x, match', power_dict_freeze_melt_data)
-def test_power_dict_freeze_melt(x, match):
-    test_dict = PowerDict(x)
-    test_dict.freeze()
-    for attr in match:
-        try:
-            test_dict[attr] = None
-            assert False
-        except ValueError:
-            pass
-
-    test_dict.melt()
-    for attr in match:
-        test_dict[attr] = None
+def test_powerdict_reserved_frozen_key_behaviors():
+    pd = PowerDict()
+    with pytest.raises(KeyError, match="_frozen"):
+        pd["_frozen"] = True
+    with pytest.raises(KeyError, match="_frozen"):
+        del pd["_frozen"]
+    with pytest.raises(KeyError, match="_frozen"):
+        del pd._frozen
 
 
-power_dict_init_data = [
-    {
-        'd': None,
-        'kwargs': None,
-        'match': {}
-    },
-    {
-        'd': None,
-        'kwargs': {'new': 'update'},
-        'match': {'kwargs': {'new': 'update'}}
-    }
-]
+def test_powerdict_missing_attr_raises_attribute_error():
+    pd = PowerDict()
+    with pytest.raises(AttributeError):
+        _ = pd.missing
 
 
-@pytest.mark.parametrize('test_data', power_dict_init_data)
-def test_dict_init(test_data: dict):
-    if test_data['kwargs'] is not None:
-        assert PowerDict(d=test_data['d'], kwargs=test_data['kwargs']) == test_data['match']
-    else:
-        assert PowerDict(d=test_data['d']) == test_data['match']
+def test_powerdict_serialization_helpers(tmp_path):
+    pd = PowerDict({"a": 1, "nested": {"b": 2}})
+
+    json_path = tmp_path / "x.json"
+    yaml_path = tmp_path / "x.yaml"
+    pkl_path = tmp_path / "x.pkl"
+    txt_path = tmp_path / "x.txt"
+
+    assert pd.to_json(json_path) is None
+    assert json_path.exists()
+    assert PowerDict.load_json(json_path) == pd
+
+    assert pd.to_yaml(yaml_path) is None
+    assert yaml_path.exists()
+    assert PowerDict.load_yaml(yaml_path) == pd
+
+    assert pd.to_pickle(pkl_path) is None
+    assert pkl_path.exists()
+    assert PowerDict.load_pickle(pkl_path) == pd
+
+    pd.to_txt(txt_path)
+    assert "nested" in txt_path.read_text(encoding="utf-8")
 
 
-power_dict_set_data = [
-    ({'int': 1}, 'int', 2, {'int': 2}),
-    ({'list': [1, 2, 3]}, 'list', [4, 5, 6], {'list': [4, 5, 6]}),
-    ({'tuple': (1, 2, 3)}, 'tuple', (7, 8, 9), {'tuple': [7, 8, 9]})
-]
+def test_powerdict_deepcopy_is_blocked_when_frozen():
+    from copy import deepcopy
+
+    pd = PowerDict({"a": 1})
+    pd.freeze()
+    with pytest.raises(Warning, match="cannot be copy"):
+        _ = deepcopy(pd)
 
 
-@pytest.mark.parametrize('x, new_key, new_value, match', power_dict_set_data)
-def test_power_dict_set(x, new_key, new_value, match):
-    test_dict = PowerDict(x)
-    test_dict[new_key] = new_value
-    assert test_dict == match
+def test_powerdict_update_without_args_and_deepcopy_when_unfrozen():
+    from copy import deepcopy
+
+    pd = PowerDict({"a": 1})
+    pd.update()
+    assert pd == {"a": 1}
+
+    clone = deepcopy(pd)
+    assert clone == pd
+    assert clone is not pd
 
 
-power_dict_set_raises_data = [
-    ({'int': 1}, 'int', 2, ValueError, "PowerDict is frozen. 'int' cannot be set."),
-    ({'list': [1, 2, 3]}, 'list', [3, 4], ValueError, "PowerDict is frozen. 'list' cannot be set."),
-    ({'tuple': (1, 2, 3)}, 'tuple', (3, 4), ValueError, "PowerDict is frozen. 'tuple' cannot be set.")
-]
+def test_powerdict_freeze_and_to_dict_handle_powerdict_inside_lists():
+    pd = PowerDict({"items": [{"x": 1}, {"y": 2}]})
+    pd.freeze()
+    with pytest.raises(ValueError, match="PowerDict is frozen"):
+        items = cast(list[Any], pd["items"])
+        cast(Any, items[0]).x = 10
 
+    pd.melt()
+    items = cast(list[Any], pd["items"])
+    cast(Any, items[0]).x = 10
+    assert cast(Any, items[0]).x == 10
 
-@pytest.mark.parametrize('x, new_key, new_value, error, match', power_dict_set_raises_data)
-def test_power_dict_set_raises(x, new_key, new_value, error, match):
-    test_dict = PowerDict(x)
-    test_dict.freeze()
-    with pytest.raises(error, match=match):
-        test_dict[new_key] = new_value
-
-
-power_dict_update_data = [
-    ({'a': 1, 'b': 2}, {'b': 4, 'c': 3}, {'a': 1, 'b': 4, 'c': 3}),
-    ({'a': 1, 'b': 2}, {'c': [1, 2]}, {'a': 1, 'b': 2, 'c': [1, 2]}),
-    ({'a': 1, 'b': 2}, {'c': (1, 2)}, {'a': 1, 'b': 2, 'c': [1, 2]})
-]
-
-
-@pytest.mark.parametrize('x, e, match', power_dict_update_data)
-def test_power_dict_update(x, e, match):
-    test_dict = PowerDict(x)
-    test_dict.update(e)
-    assert test_dict == match
-
-
-power_dict_pop_data = [
-    ({'a': 1, 'b': 2, 'c': 3}, 'b', {'a': 1, 'c': 3}),
-    ({'a': 1, 'b': 2, 'c': [1, 2]}, 'b', {'a': 1, 'c': [1, 2]}),
-    ({'a': 1, 'b': 2, 'c': (1, 2)}, 'b', {'a': 1, 'c': [1, 2]}),
-]
-
-
-@pytest.mark.parametrize('x, key, match', power_dict_pop_data)
-def test_power_dict_pop(x, key, match):
-    test_dict = PowerDict(x)
-    test_dict.pop(key)
-    assert test_dict == match
-
-
-test_power_dict_del_raises = [
-    ({'a': 1, 'b': 2, 'c': 3}, 'b', ValueError, "PowerDict is frozen. 'b' cannot be del."),
-    ({'a': 1, 'b': 2, 'c': [1, 2]}, 'b', ValueError, "PowerDict is frozen. 'b' cannot be del."),
-    ({'a': 1, 'b': 2, 'c': (1, 2)}, 'b', ValueError, "PowerDict is frozen. 'b' cannot be del."),
-]
-
-
-@pytest.mark.parametrize('x, key, error, match', test_power_dict_del_raises)
-def test_power_dict_del_raises(x, key, error, match):
-    test_dict = PowerDict(x)
-    test_dict.freeze()
-    with pytest.raises(error, match=match):
-        del test_dict[key]
+    out = pd.to_dict()
+    assert out == {"items": [{"x": 10}, {"y": 2}]}

@@ -1,0 +1,428 @@
+name: Capybara CI
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qa:
+    name: QA (ruff + pyright + pytest)
+    runs-on: [self-hosted, unicorn]
+    timeout-minutes: 45
+    permissions:
+      actions: read
+      contents: read
+      packages: read
+      pull-requests: write
+      checks: write
+    env:
+      PYTHON_VERSION: "3.10"
+      REPORT_DIR: .ci-reports
+      PYTEST_REPORT_DIR: .ci-reports/pytest/raw
+      RUFF_REPORT_DIR: .ci-reports/ruff
+      PYRIGHT_REPORT_DIR: .ci-reports/pyright
+      COVERAGE_MIN_LINE: "0.99"
+      COVERAGE_MIN_BRANCH: "0.00"
+      COVERAGE_ENFORCE: "1"
+      ARTIFACT_RETENTION_DAYS: 14
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache-dependency-path: |
+            pyproject.toml
+            **/requirements*.txt
+
+      - name: Install dependencies
+        run: |
+          PYTORCH_INDEX_URL="https://download.pytorch.org/whl/cpu"
+          python -m pip install --upgrade pip wheel
+          python -m pip install torch --index-url "$PYTORCH_INDEX_URL"
+          python -m pip install -e .
+          python -m pip install pytest pytest-cov pytest-html coverage ruff pyright onnx onnxslim
+
+      - name: Prepare report directories
+        run: |
+          mkdir -p "$REPORT_DIR"
+          mkdir -p "$PYTEST_REPORT_DIR"
+          mkdir -p "$RUFF_REPORT_DIR"
+          mkdir -p "$PYRIGHT_REPORT_DIR"
+
+      - name: Ruff - Lint
+        id: ruff_lint
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          set +e
+          python -m ruff version
+          python -m ruff check capybara tests | tee "$RUFF_REPORT_DIR/lint.log"
+          status=${PIPESTATUS[0]}
+          set -e
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          exit $status
+
+      - name: Ruff - Format Check
+        id: ruff_format
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          set +e
+          python -m ruff format --check capybara tests | tee "$RUFF_REPORT_DIR/format.log"
+          status=${PIPESTATUS[0]}
+          set -e
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          exit $status
+
+      - name: Pyright
+        id: pyright
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          set +e
+          python -m pyright --version
+          python -m pyright | tee "$PYRIGHT_REPORT_DIR/pyright.log"
+          status=${PIPESTATUS[0]}
+          set -e
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          exit $status
+
+      - name: Pytest (XML + HTML + Coverage)
+        id: pytest
+        continue-on-error: true
+        env:
+          PYTEST_ADDOPTS: "-vv -ra"
+        run: |
+          set -o pipefail
+          raw_dir="$PYTEST_REPORT_DIR"
+          final_dir="$REPORT_DIR/pytest"
+          mkdir -p "$final_dir" "$raw_dir"
+          set +e
+          python -m pytest \
+            --junitxml="$raw_dir/pytest.xml" \
+            --cov=capybara \
+            --cov-report=term-missing:skip-covered \
+            --cov-report=xml:"$raw_dir/coverage.xml" \
+            --cov-report=html:"$raw_dir/htmlcov" \
+            --html="$raw_dir/pytest.html" \
+            --self-contained-html \
+            --durations=25 \
+            tests 2>&1 | tee "$raw_dir/pytest.log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [[ -f .coverage ]]; then
+            python -m coverage report -m --skip-empty --skip-covered > "$raw_dir/coverage_report.txt" || true
+          else
+            : > "$raw_dir/coverage_report.txt"
+          fi
+          for artifact in pytest.log pytest.xml coverage.xml pytest.html coverage_report.txt; do
+            if [[ -f "$raw_dir/$artifact" ]]; then
+              cp "$raw_dir/$artifact" "$final_dir/$artifact"
+            fi
+          done
+          if [[ -f "$raw_dir/pytest.log" ]]; then
+            cp "$raw_dir/pytest.log" "$final_dir/run.log"
+          fi
+          if [[ -d "$raw_dir/htmlcov" ]]; then
+            rm -rf "$final_dir/htmlcov"
+            cp -R "$raw_dir/htmlcov" "$final_dir/htmlcov"
+          fi
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          exit $status
+
+      - name: Generate Pytest summary
+        if: always()
+        env:
+          PYTEST_OUTCOME: ${{ steps.pytest.outcome }}
+          PYTEST_EXIT_CODE: ${{ steps.pytest.outputs.exit_code }}
+        run: |
+          python .github/scripts/generate_pytest_summary.py
+          summary_path="$REPORT_DIR/pytest/summary.md"
+          if [[ ! -s "$summary_path" ]]; then
+            echo "::error::Pytest summary was not generated"
+            exit 1
+          fi
+          {
+            echo "PYTEST_SUMMARY_BODY<<EOF"
+            cat "$summary_path"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Coverage Gate (optional)
+        id: coverage_gate
+        if: always() && hashFiles('.ci-reports/pytest/raw/coverage.xml') != ''
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          set +e
+          python .github/scripts/coverage_gate.py \
+            --file "${{ github.workspace }}/${{ env.PYTEST_REPORT_DIR }}/coverage.xml" \
+            --min-line "$COVERAGE_MIN_LINE" \
+            --min-branch "$COVERAGE_MIN_BRANCH" \
+            --enforce "$COVERAGE_ENFORCE" | tee "$REPORT_DIR/pytest/coverage_gate.log"
+          status=${PIPESTATUS[0]}
+          set -e
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          exit $status
+
+      - name: Upload CI report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-report-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+          compression-level: 6
+          path: .ci-reports/
+
+      - name: Publish CI summary (artifact + comment)
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const marker = '<!-- Capybara CI Report -->';
+            const baseDir = path.join(process.cwd(), '.ci-reports');
+            const pytestDir = path.join(baseDir, 'pytest');
+            const ruffDir = path.join(baseDir, 'ruff');
+            const artifactName = `ci-report-${context.runId}`;
+            fs.mkdirSync(baseDir, { recursive: true });
+
+            const fmtOutcome = (value) => {
+              const mapping = {
+                success: '✅ 通過',
+                failure: '❌ 失敗',
+                cancelled: '⚪ 取消',
+                skipped: '⚪ 未執行',
+              };
+              return mapping[value] || `⚪ ${value || '未知'}`;
+            };
+
+            const readIfExists = (file) => {
+              try {
+                return fs.readFileSync(file, 'utf8').trim();
+              } catch {
+                return null;
+              }
+            };
+
+            const readTail = (file) => {
+              try {
+                const raw = fs.readFileSync(file, 'utf8').trim();
+                if (!raw) return null;
+                const lines = raw.split(/\r?\n/);
+                const tail = lines.slice(-200).join('\n');
+                return tail.length > 6000 ? tail.slice(-6000) : tail;
+              } catch {
+                return null;
+              }
+            };
+
+            const artifactPlaceholder = '<!-- PYTEST_ARTIFACT_LINK -->';
+            const coverageSummary = readIfExists(path.join(pytestDir, 'coverage.txt')) || 'N/A';
+            const pytestSummaryRaw = readIfExists(path.join(pytestDir, 'summary.md'));
+            const pytestSummary = (() => {
+              if (!pytestSummaryRaw) return null;
+              const marker = '<!-- Pytest Report -->';
+              if (pytestSummaryRaw.includes(marker)) {
+                return pytestSummaryRaw.split(marker).pop().trim();
+              }
+              return pytestSummaryRaw;
+            })();
+            const lintTail = readTail(path.join(ruffDir, 'lint.log'));
+            const formatTail = readTail(path.join(ruffDir, 'format.log'));
+
+            const ruffLintOutcome = '${{ steps.ruff_lint.outcome }}';
+            const ruffFormatOutcome = '${{ steps.ruff_format.outcome }}';
+            const pytestOutcome = '${{ steps.pytest.outcome }}';
+            const pytestExitCode = '${{ steps.pytest.outputs.exit_code || '' }}';
+            const coverageGateOutcome = '${{ steps.coverage_gate.outcome || '' }}';
+            const coverageGateExit = '${{ steps.coverage_gate.outputs.exit_code || '' }}';
+            const coverageGateEnforce = '${{ env.COVERAGE_ENFORCE }}';
+
+            const coverageGateStatus = (() => {
+              if (!coverageGateOutcome) {
+                return '⚪ 未執行';
+              }
+              const suffix = coverageGateExit && coverageGateExit !== '0' && coverageGateEnforce === '0'
+                ? '（未強制）'
+                : '';
+              return `${fmtOutcome(coverageGateOutcome)}${suffix}`;
+            })();
+
+            const pytestStatus = (() => {
+              let status = fmtOutcome(pytestOutcome);
+              if (pytestExitCode) {
+                status += ` (exit=${pytestExitCode})`;
+              }
+              return status;
+            })();
+
+            const kpiTable = [
+              '| 項目 | 狀態 |',
+              '| --- | --- |',
+              `| Ruff Lint | ${fmtOutcome(ruffLintOutcome)} |`,
+              `| Ruff Format | ${fmtOutcome(ruffFormatOutcome)} |`,
+              `| Pytest | ${pytestStatus} |`,
+              `| Coverage | ${coverageSummary} |`,
+              `| Coverage Gate | ${coverageGateStatus} |`,
+            ].join('\n');
+
+            let artifactLink = null;
+            try {
+              const { owner, repo } = context.repo;
+              const { data } = await github.rest.actions.listWorkflowRunArtifacts({
+                owner,
+                repo,
+                run_id: context.runId,
+                per_page: 100,
+              });
+              const target = (data.artifacts || []).find((item) => item.name === artifactName);
+              if (target) {
+                artifactLink = `[${target.name}](${target.archive_download_url})`;
+              }
+            } catch (error) {
+              core.warning(`無法取得 artifacts: ${error.message}`);
+            }
+
+            const quickLinks = [];
+            const runSummaryUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${context.runId}`;
+            quickLinks.push(`- [Workflow 執行](${runSummaryUrl})`);
+            if (artifactLink) {
+              quickLinks.push(`- 測試 HTML：${artifactLink}（內含 \`pytest/pytest.html\`）`);
+              quickLinks.push(`- JUnit XML：${artifactLink}（內含 \`pytest/pytest.xml\`）`);
+              quickLinks.push(`- Coverage HTML：${artifactLink}（內含 \`pytest/htmlcov/index.html\`）`);
+            } else {
+              quickLinks.push('- 測試 HTML：不可用');
+              quickLinks.push('- JUnit XML：不可用');
+              quickLinks.push('- Coverage HTML：不可用');
+            }
+
+            const lines = [
+              marker,
+              '## CI 概覽',
+              '',
+              kpiTable,
+              '',
+              '### 快速連結',
+              '',
+              ...quickLinks,
+              '',
+            ];
+
+            if (pytestSummary) {
+              const artifactText = artifactLink || '不可用';
+              const processedSummary = pytestSummary.replace(new RegExp(artifactPlaceholder, 'g'), artifactText);
+              lines.push(processedSummary);
+              lines.push('');
+            } else {
+              lines.push('_(Pytest 摘要不可用)_', '');
+            }
+
+            if (ruffLintOutcome === 'failure' && lintTail) {
+              lines.push('### Ruff Lint（最後 200 行）', '', '<details><summary>展開</summary>', '', '```');
+              lines.push(lintTail);
+              lines.push('```', '</details>', '');
+            }
+
+            if (ruffFormatOutcome === 'failure' && formatTail) {
+              lines.push('### Ruff Format（最後 200 行）', '', '<details><summary>展開</summary>', '', '```');
+              lines.push(formatTail);
+              lines.push('```', '</details>', '');
+            }
+
+            const body = lines.join('\n');
+            const indexPath = path.join(baseDir, 'index.md');
+            fs.writeFileSync(indexPath, `${body}\n`, { encoding: 'utf8' });
+
+            if (context.eventName !== 'pull_request') {
+              return;
+            }
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+
+            const existing = comments.find((comment) => comment.body && comment.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }
+
+      - name: Append CI summary to Job Summary
+        if: always()
+        run: |
+          if [[ -f "$REPORT_DIR/index.md" ]]; then
+            cat "$REPORT_DIR/index.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## CI 概覽" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "_(summary 未產生)_" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Finalize CI status
+        if: always()
+        run: |
+          failed=0
+          ruff_lint_exit="${{ steps.ruff_lint.outputs.exit_code || '0' }}"
+          ruff_format_exit="${{ steps.ruff_format.outputs.exit_code || '0' }}"
+          pyright_exit="${{ steps.pyright.outputs.exit_code || '0' }}"
+          pytest_exit="${{ steps.pytest.outputs.exit_code || '0' }}"
+          coverage_gate_exit="${{ steps.coverage_gate.outputs.exit_code || '0' }}"
+
+          if [[ "$ruff_lint_exit" -ne 0 ]]; then
+            echo "::error::Ruff Lint failed"
+            failed=1
+          fi
+          if [[ "$ruff_format_exit" -ne 0 ]]; then
+            echo "::error::Ruff Format failed"
+            failed=1
+          fi
+          if [[ "$pyright_exit" -ne 0 ]]; then
+            echo "::error::Pyright failed"
+            failed=1
+          fi
+          if [[ "$pytest_exit" -ne 0 ]]; then
+            echo "::error::Pytest failed"
+            failed=1
+          fi
+          if [[ "$coverage_gate_exit" -ne 0 ]]; then
+            if [[ "$COVERAGE_ENFORCE" != "0" ]]; then
+              echo "::error::Coverage gate failed"
+              failed=1
+            else
+              echo "::warning::Coverage gate reported failure but enforcement is disabled (COVERAGE_ENFORCE=$COVERAGE_ENFORCE)."
+            fi
+          fi
+
+          if [[ $failed -ne 0 ]]; then
+            exit 1
+          fi

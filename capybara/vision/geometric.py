@@ -1,4 +1,4 @@
-from typing import List, Tuple, Union
+from typing import Literal, overload
 
 import cv2
 import numpy as np
@@ -7,17 +7,38 @@ from ..enums import BORDER, INTER, ROTATE
 from ..structures import Polygon, Polygons, order_points_clockwise
 
 __all__ = [
-    'imresize', 'imrotate90', 'imrotate', 'imwarp_quadrangle',
-    'imwarp_quadrangles'
+    "imresize",
+    "imrotate",
+    "imrotate90",
+    "imwarp_quadrangle",
+    "imwarp_quadrangles",
 ]
+
+
+@overload
+def imresize(
+    img: np.ndarray,
+    size: tuple[int | None, int | None],
+    interpolation: str | int | INTER = INTER.BILINEAR,
+    return_scale: Literal[False] = False,
+) -> np.ndarray: ...
+
+
+@overload
+def imresize(
+    img: np.ndarray,
+    size: tuple[int | None, int | None],
+    interpolation: str | int | INTER = INTER.BILINEAR,
+    return_scale: Literal[True] = True,
+) -> tuple[np.ndarray, float, float]: ...
 
 
 def imresize(
     img: np.ndarray,
-    size: Tuple[int, int],
-    interpolation: Union[str, int, INTER] = INTER.BILINEAR,
+    size: tuple[int | None, int | None],
+    interpolation: str | int | INTER = INTER.BILINEAR,
     return_scale: bool = False,
-) -> Union[np.ndarray, Tuple[np.ndarray, float, float]]:
+) -> np.ndarray | tuple[np.ndarray, float, float]:
     """
     This function is used to resize image.
 
@@ -50,10 +71,13 @@ def imresize(
         scale = h / raw_h
         w = int(raw_w * scale + 0.5)  # round to nearest integer
 
+    if h is None or w is None:
+        raise ValueError("`size` must provide at least one dimension.")
+
     resized_img = cv2.resize(img, (w, h), interpolation=interpolation.value)
 
     if return_scale:
-        if 'scale' not in locals():  # calculate scale if not already done
+        if "scale" not in locals():  # calculate scale if not already done
             w_scale = w / raw_w
             h_scale = h / raw_h
         else:
@@ -81,13 +105,13 @@ def imrotate(
     img: np.ndarray,
     angle: float,
     scale: float = 1,
-    interpolation: Union[str, int, INTER] = INTER.BILINEAR,
-    bordertype: Union[str, int, BORDER] = BORDER.CONSTANT,
-    bordervalue: Union[int, Tuple[int, int, int]] = None,
+    interpolation: str | int | INTER = INTER.BILINEAR,
+    bordertype: str | int | BORDER = BORDER.CONSTANT,
+    bordervalue: int | tuple[int, ...] | None = None,
     expand: bool = True,
-    center: Tuple[int, int] = None,
+    center: tuple[int, int] | None = None,
 ) -> np.ndarray:
-    '''
+    """
     Rotate the image by angle.
 
     Args:
@@ -113,49 +137,76 @@ def imrotate(
 
     Returns:
         rotated img: rotated img.
-    '''
+    """
     bordertype = BORDER.obj_to_enum(bordertype)
-    bordervalue = (bordervalue,) * \
-        3 if isinstance(bordervalue, int) else bordervalue
     interpolation = INTER.obj_to_enum(interpolation)
+
+    if img.ndim == 2:
+        channels = 1
+    elif img.ndim == 3:
+        channels = int(img.shape[-1])
+    else:
+        raise ValueError("img must be a 2D or 3D numpy image.")
+
+    if bordervalue is None:
+        bordervalue = 0
+    elif isinstance(bordervalue, int):
+        bordervalue = (
+            int(bordervalue)
+            if channels == 1
+            else tuple(int(bordervalue) for _ in range(channels))
+        )
+    elif isinstance(bordervalue, tuple):
+        if channels == 1 and len(bordervalue) == 1:
+            bordervalue = int(bordervalue[0])
+        elif len(bordervalue) == channels:
+            bordervalue = tuple(int(v) for v in bordervalue)
+        else:
+            raise ValueError(
+                f"channel of image is {channels} but bordervalue is {bordervalue}."
+            )
 
     h, w = img.shape[:2]
     center = center or (w / 2, h / 2)
-    M = cv2.getRotationMatrix2D(center, angle=angle, scale=scale)
+    matrix = cv2.getRotationMatrix2D(center, angle=angle, scale=scale)
     if expand:
-        cos = np.abs(M[0, 0])
-        sin = np.abs(M[0, 1])
+        cos = np.abs(matrix[0, 0])
+        sin = np.abs(matrix[0, 1])
 
         # compute the new bounding dimensions of the image
-        nW = int((h * sin) + (w * cos)) + 1
-        nH = int((h * cos) + (w * sin)) + 1
+        new_w = int((h * sin) + (w * cos)) + 1
+        new_h = int((h * cos) + (w * sin)) + 1
 
         # adjust the rotation matrix to take into account translation
-        M[0, 2] += (nW / 2) - center[0]
-        M[1, 2] += (nH / 2) - center[1]
+        matrix[0, 2] += (new_w / 2) - center[0]
+        matrix[1, 2] += (new_h / 2) - center[1]
 
         # perform the actual rotation and return the image
         dst = cv2.warpAffine(
-            img, M, (nW, nH),
-            flags=interpolation,
-            borderMode=bordertype,
-            borderValue=bordervalue
+            img,
+            matrix,
+            (new_w, new_h),
+            flags=interpolation.value,
+            borderMode=bordertype.value,
+            borderValue=bordervalue,
         )
     else:
         dst = cv2.warpAffine(
-            img, M, (w, h),
-            flags=interpolation,
-            borderMode=bordertype,
-            borderValue=bordervalue
+            img,
+            matrix,
+            (w, h),
+            flags=interpolation.value,
+            borderMode=bordertype.value,
+            borderValue=bordervalue,
         )
 
-    return dst.astype('uint8')
+    return dst
 
 
 def imwarp_quadrangle(
     img: np.ndarray,
-    polygon: Union[Polygon, np.ndarray],
-    dst_size: Tuple[int, int] = None,
+    polygon: Polygon | np.ndarray,
+    dst_size: tuple[int, int] | None = None,
     do_order_points: bool = True,
 ) -> np.ndarray:
     """
@@ -188,12 +239,12 @@ def imwarp_quadrangle(
         polygon = Polygon(polygon)
 
     if not isinstance(polygon, Polygon):
-        raise TypeError(
-            f'Input type of polygon {type(polygon)} not supported.')
+        raise TypeError(f"Input type of polygon {type(polygon)} not supported.")
 
     if len(polygon) != 4:
         raise ValueError(
-            f'Input polygon, which is not contain 4 points is invalid.')
+            "Input polygon, which is not contain 4 points is invalid."
+        )
 
     if dst_size is None:
         width, height = polygon.min_box_wh
@@ -209,10 +260,9 @@ def imwarp_quadrangle(
     if do_order_points:
         src_pts = order_points_clockwise(src_pts)
 
-    dst_pts = np.array([[0, 0],
-                        [width, 0],
-                        [width, height],
-                        [0, height]], dtype="float32")
+    dst_pts = np.array(
+        [[0, 0], [width, 0], [width, height], [0, height]], dtype="float32"
+    )
 
     matrix = cv2.getPerspectiveTransform(src_pts, dst_pts)
     return cv2.warpPerspective(img, matrix, (width, height))
@@ -221,9 +271,9 @@ def imwarp_quadrangle(
 def imwarp_quadrangles(
     img: np.ndarray,
     polygons: Polygons,
-    dst_size: Tuple[int, int] = None,
+    dst_size: tuple[int, int] | None = None,
     do_order_points: bool = True,
-) -> List[np.ndarray]:
+) -> list[np.ndarray]:
     """
     Apply a 4-point perspective transform to an image using a given polygons.
 
@@ -246,11 +296,11 @@ def imwarp_quadrangles(
     """
     if not isinstance(polygons, Polygons):
         raise TypeError(
-            f'Input type of polygons {type(polygons)} not supported.')
+            f"Input type of polygons {type(polygons)} not supported."
+        )
     return [
         imwarp_quadrangle(
-            img, poly,
-            dst_size=dst_size,
-            do_order_points=do_order_points
-        ) for poly in polygons
+            img, poly, dst_size=dst_size, do_order_points=do_order_points
+        )
+        for poly in polygons
     ]

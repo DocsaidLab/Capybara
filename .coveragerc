@@ -1,0 +1,15 @@
+[run]
+omit =
+    */config.py
+    */config-*.py
+    capybara/cpuinfo.py
+    capybara/utils/system_info.py
+    capybara/vision/ipcam/app.py
+
+[report]
+omit =
+    */config.py
+    */config-*.py
+    capybara/cpuinfo.py
+    capybara/utils/system_info.py
+    capybara/vision/ipcam/app.py

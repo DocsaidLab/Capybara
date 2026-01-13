@@ -166,3 +166,8 @@ temp_image.jpg
 .DS_Store
 .python-version
 tmp.jpg
+tmp*
+.venv_min
+.vscode
+.ruff_cache
+.benchmarks
