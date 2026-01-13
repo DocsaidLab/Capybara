@@ -97,4 +97,4 @@ __all__ = [
     "video2frames_v2",
 ]
 
-__version__ = "0.12.0"
+__version__ = "1.0.0"
