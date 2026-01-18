@@ -1,7 +1,6 @@
 import re
 from collections.abc import Generator, Iterable
 from pathlib import Path
-from pprint import pprint
 from typing import Any, cast
 
 import requests
@@ -14,7 +13,6 @@ __all__ = [
     "colorstr",
     "download_from_google",
     "make_batch",
-    "pprint",
 ]
 
 
